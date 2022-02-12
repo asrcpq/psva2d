@@ -1,0 +1,12 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+pub enum Message {
+	WorldUpdate(Vec<[f32; 2]>),
+}
+
+impl Message {
+	pub fn to_bytes(&self) -> Vec<u8> {
+		bincode::serialize(&self).unwrap()
+	}
+}
