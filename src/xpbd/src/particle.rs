@@ -33,7 +33,7 @@ impl Particle {
 	pub fn update(&mut self, t: f32) {
 		if self.imass == 0f32 { return } // fixed
 		let ppos = self.pos;
-		let mut dv = self.accel * t;
+		let dv = self.accel * t;
 		self.pos += self.pos - self.ppos + dv * t;
 		self.ppos = ppos;
 	}

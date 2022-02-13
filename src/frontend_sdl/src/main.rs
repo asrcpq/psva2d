@@ -9,7 +9,6 @@ use protocol::sock::SockClient;
 pub fn main() {
 	let mut sock = SockClient::default();
 	eprintln!("Connection ok");
-	let mut buf = vec![0u8; 10_000_000];
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
 	let window = video_subsystem.window("psva2d", 800, 600)
@@ -50,7 +49,6 @@ pub fn main() {
 					}
 				},
 				Message::Nop => break,
-				_ => {},
 			}
 		}
 		std::thread::sleep(std::time::Duration::from_millis(10));

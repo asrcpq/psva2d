@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::particle::{Particle, PRef};
+use crate::particle::PRef;
 use crate::{V2, C2};
 
 pub struct ParticleGroup {
