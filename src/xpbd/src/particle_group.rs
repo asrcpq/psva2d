@@ -23,6 +23,7 @@ impl ParticleGroup {
 	pub fn update(&mut self, dt: f32) {
 		for p in self.data.values().flatten() {
 			p.borrow_mut().update(dt);
+			// todo: update grid
 		}
 	}
 
