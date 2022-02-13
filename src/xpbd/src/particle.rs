@@ -26,12 +26,15 @@ impl Particle {
 
 	pub fn get_pos(&self) -> V2 { self.pos }
 
+	pub fn add_pos(&mut self, dp: V2) { self.pos += dp }
+
+	pub fn get_imass(&self) -> f32 { self.imass }
+
 	pub fn update(&mut self, t: f32) {
 		if self.imass == 0f32 { return } // fixed
 		let ppos = self.pos;
 		let mut dv = self.accel * t;
 		self.pos += self.pos - self.ppos + dv * t;
 		self.ppos = ppos;
-		eprintln!("{:?} {:?}", dv, self.pos);
 	}
 }

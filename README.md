@@ -2,4 +2,4 @@
 
 * frontend canvas & control
 
-* show fps
+* show fps(status bar)

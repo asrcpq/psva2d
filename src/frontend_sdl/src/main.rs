@@ -3,10 +3,6 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
-use std::time::Duration;
-use std::thread::sleep;
-use std::io::Read;
-
 use protocol::Message;
 use protocol::sock::SockClient;
 
@@ -41,7 +37,6 @@ pub fn main() {
 			match msg {
 				// todo: update last only
 				Message::WorldUpdate(pvec) => {
-					eprintln!("Update");
 					canvas.set_draw_color(Color::RGB(0, 0, 0));
 					canvas.clear();
 					for [x, y] in pvec.into_iter() {
@@ -58,6 +53,6 @@ pub fn main() {
 				_ => {},
 			}
 		}
-		std::thread::sleep(Duration::from_millis(10));
+		std::thread::sleep(std::time::Duration::from_millis(10));
 	}
 }
