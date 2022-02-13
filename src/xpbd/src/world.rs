@@ -1,5 +1,4 @@
 use std::time::SystemTime;
-use std::io::Write;
 
 use protocol::sock::SockServer;
 
@@ -17,7 +16,7 @@ pub struct World {
 
 impl Default for World {
 	fn default() -> Self {
-		let mut pg = ParticleGroup::default();
+		let pg = ParticleGroup::default();
 		Self {
 			sock: SockServer::default(),
 			pg,
@@ -28,17 +27,18 @@ impl Default for World {
 
 impl World {
 	pub fn init_test(&mut self) {
-		let p = Particle::new_ref(f32::INFINITY, V2::new(100., 100.), V2::new(0., 0.));
+		let p = Particle::new_ref(f32::INFINITY, V2::new(300., 100.), V2::new(0., 0.));
 		let mut last_p = p.clone();
 		self.pg.add_particle(p);
 		for i in 1..=10 {
 			let p = Particle::new_ref(
 				1.,
-				V2::new(100. + i as f32 * 30., 100.),
+				V2::new(300. + i as f32 * 30., 100.),
 				V2::new(0., 10.),
 			);
-			DistanceConstraint::new_constraint(last_p, p.clone());
 			self.pg.add_particle(p.clone());
+			let dc = DistanceConstraint::new_constraint(last_p, p.clone());
+			self.constraints.push(dc);
 			last_p = p;
 		}
 	}
