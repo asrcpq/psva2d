@@ -21,7 +21,7 @@ impl Default for ParticleGroup {
 
 impl ParticleGroup {
 	pub fn init_test(&mut self) {
-		let p = Particle::new_ref(1., V2::new(10., 10.), V2::new(0., 10.));
+		let p = Particle::new_ref(1., V2::new(10., 10.), V2::new(0., 1.));
 		self.data[0][0].push(p);
 	}
 
