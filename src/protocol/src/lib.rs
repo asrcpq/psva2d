@@ -1,8 +1,11 @@
+pub mod sock;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub enum Message {
 	WorldUpdate(Vec<[f32; 2]>),
+	Nop,
 }
 
 impl Message {
