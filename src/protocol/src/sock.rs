@@ -9,6 +9,37 @@ pub struct SockServer {
 	stream: Option<UnixStream>,
 }
 
+impl Default for SockServer {
+	fn default() -> Self {
+		let _ = std::fs::remove_file("psva2d.socket");
+		let listener = UnixListener::bind("psva2d.socket").unwrap();
+		Self {
+			listener,
+			stream: None,
+		}
+	}
+}
+
+impl SockServer {
+	fn listen(&mut self) {
+		let stream = self.listener.incoming().next().unwrap().unwrap();
+		self.stream = Some(stream);
+	}
+
+	pub fn send_msg(&mut self, msg: &[u8]) {
+		loop {
+			if let Some(stream) = self.stream.as_mut() {
+				if let Ok(_) = stream.write_all(&msg) {
+					return
+				}
+			}
+			eprintln!("Wait for connection");
+			self.listen();
+			eprintln!("Connected");
+		}
+	}
+}
+
 pub struct SockClient {
 	stream: Option<UnixStream>,
 	buf: Vec<u8>,
@@ -33,8 +64,10 @@ impl SockClient {
 					}
 				}
 				Err(e) => {
-					eprintln!("{:?}", e);
-					return Message::Nop
+					if e.kind() == std::io::ErrorKind::WouldBlock {
+						return Message::Nop
+					}
+					panic!("{:?}", e);
 				},
 			}
 		}

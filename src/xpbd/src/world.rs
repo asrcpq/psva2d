@@ -1,35 +1,26 @@
-use std::os::unix::net::{UnixListener, UnixStream};
 use std::time::SystemTime;
 use std::io::Write;
 
 use crate::particle_group::ParticleGroup;
+use protocol::sock::SockServer;
 
 pub struct World {
-	listener: UnixListener,
-	stream: Option<UnixStream>,
+	sock: SockServer,
 	pg: ParticleGroup,
 }
 
 impl Default for World {
 	fn default() -> Self {
-		let _ = std::fs::remove_file("psva2d.socket");
-		let listener = UnixListener::bind("psva2d.socket").unwrap();
 		let mut pg = ParticleGroup::default();
 		pg.init_test();
 		Self {
-			listener,
-			stream: None,
+			sock: SockServer::default(),
 			pg,
 		}
 	}
 }
 
 impl World {
-	fn listen(&mut self) {
-		let stream = self.listener.incoming().next().unwrap().unwrap();
-		self.stream = Some(stream);
-	}
-
 	fn update_msg(&self) -> protocol::Message {
 		let mut result = Vec::new();
 		for p in self.pg.get_particles().into_iter() {
@@ -44,23 +35,8 @@ impl World {
 		self.pg.update(dt);
 	}
 
-	fn send_msg(&mut self) {
-		let msg = self.update_msg().to_bytes();
-		loop {
-			if let Some(stream) = self.stream.as_mut() {
-				if let Ok(_) = stream.write_all(&msg) {
-					return
-				}
-			}
-			eprintln!("Wait for connection");
-			self.listen();
-			eprintln!("Connected");
-		}
-	}
-
 	pub fn run(&mut self) {
 		let mut dt = 0f32;
-		self.send_msg();
 		loop {
 			let start_time = SystemTime::now();
 			self.update_frame(dt);
@@ -73,7 +49,8 @@ impl World {
 					20000 - duration as u64
 				));
 			}
-			self.send_msg();
+			let msg = self.update_msg().to_bytes();
+			self.sock.send_msg(&msg);
 			// recompute after sleep
 			let duration = SystemTime::now()
 				.duration_since(start_time)
