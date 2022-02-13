@@ -2,23 +2,24 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::time::SystemTime;
 use std::io::Write;
 
-// use crate::V2;
+use crate::particle_group::ParticleGroup;
 
 pub struct World {
-	x: f32,
 	listener: UnixListener,
 	stream: Option<UnixStream>,
-//	std::collections::HashMap<CellPos>
+	pg: ParticleGroup,
 }
 
 impl Default for World {
 	fn default() -> Self {
 		let _ = std::fs::remove_file("psva2d.socket");
 		let listener = UnixListener::bind("psva2d.socket").unwrap();
+		let mut pg = ParticleGroup::default();
+		pg.init_test();
 		Self {
-			x: 0.0,
 			listener,
 			stream: None,
+			pg,
 		}
 	}
 }
@@ -30,12 +31,17 @@ impl World {
 	}
 
 	fn update_msg(&self) -> protocol::Message {
-		protocol::Message::WorldUpdate(vec![[self.x, 10f32]])
+		let mut result = Vec::new();
+		for p in self.pg.get_particles().into_iter() {
+			let pos = p.borrow().get_pos();
+			result.push(pos.try_into().unwrap())
+		}
+		protocol::Message::WorldUpdate(result)
 	}
 
 	fn update_frame(&mut self, dt: f32) {
-		self.x += 0.1;
 		if dt == 0f32 { return }
+		self.pg.update(dt);
 	}
 
 	fn send_msg(&mut self) {
@@ -67,8 +73,13 @@ impl World {
 					20000 - duration as u64
 				));
 			}
-			dt = duration as f32 / 1e6f32;
 			self.send_msg();
+			// recompute after sleep
+			let duration = SystemTime::now()
+				.duration_since(start_time)
+				.unwrap()
+				.as_micros();
+			dt = duration as f32 / 1e6f32;
 		}
 	}
 }
