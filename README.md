@@ -1,5 +1,3 @@
-todo:
+# Todo:
 
 * frontend canvas & control
-
-* frontend reconnect
