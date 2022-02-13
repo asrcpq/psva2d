@@ -19,6 +19,7 @@ impl World {
 	}
 
 	pub fn run(&mut self) {
+		let _ = std::fs::remove_file("psva2d.socket");
 		let listener = UnixListener::bind("psva2d.socket").unwrap();
 		let mut stream = listener.incoming().next().unwrap().unwrap();
 		let mut dt = 0f32;
