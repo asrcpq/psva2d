@@ -14,8 +14,15 @@ pub struct World {
 	sock: SockServer,
 	pg: ParticleGroup,
 	constraints: Vec<Box<dyn Constraint>>,
-	ppr: usize,    // p frame per r frame
-	pframe_t: u64, // micros
+
+	// pframe per rframe
+	ppr: usize,
+
+	// physical frametime
+	pft: f32,
+
+	// no sleep mode means no frame lock, always use all cpu
+	sleep: bool,
 }
 
 impl Default for World {
@@ -26,12 +33,18 @@ impl Default for World {
 			pg,
 			constraints: Vec::new(),
 			ppr: 4,
-			pframe_t: 5000,
+			pft: 0.005,
+			sleep: true,
 		}
 	}
 }
 
 impl World {
+	pub fn with_pft(mut self, pft: f32) -> Self {
+		self.pft = pft;
+		self
+	}
+
 	pub fn init_test(&mut self) {
 		self.pg = Default::default();
 		self.constraints = Default::default();
@@ -159,6 +172,7 @@ impl World {
 	pub fn run(&mut self) {
 		self.init_test();
 		let mut frame_id = 0;
+		let mut dt = 0f32;
 		self.send_msg();
 		loop {
 			let start_time = SystemTime::now();
@@ -168,21 +182,29 @@ impl World {
 			} else {
 				frame_id += 1;
 			}
-			self.update_frame(self.pframe_t as f32 / 1e6, 20);
+			self.update_frame(dt, 20);
 			let duration = SystemTime::now()
 				.duration_since(start_time)
 				.unwrap()
-				.as_micros() as u64;
-			if duration < self.pframe_t {
-				std::thread::sleep(std::time::Duration::from_micros(
-					self.pframe_t - duration,
-				));
-			}
+				.as_micros() as f32 / 1e6;
+			dt = if duration < self.pft {
+				if self.sleep {
+					std::thread::sleep(std::time::Duration::from_micros(
+						((self.pft - duration) * 1e6) as u64
+					));
+					self.pft
+				} else {
+					duration
+				}
+			} else {
+				// laggy
+				self.pft
+			};
 			if frame_id % self.ppr == 0 {
 				self.send_msg();
 			}
 			if frame_id % 100 == 0 {
-				eprint!("[2K{}\r", duration as i32 - self.pframe_t as i32);
+				eprint!("[2K{:.2}ms\r", (duration - self.pft) * 1e3);
 			}
 		}
 	}
