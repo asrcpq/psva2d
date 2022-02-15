@@ -3,6 +3,8 @@ use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 
+use frontend::V2;
+use frontend::viewport::Viewport;
 use protocol::sock::SockClient;
 use protocol::Message;
 
@@ -16,6 +18,7 @@ pub fn main() {
 		.position_centered()
 		.build()
 		.unwrap();
+	let vp = Viewport::default();
 	let mut canvas = window.into_canvas().build().unwrap();
 	canvas.set_draw_color(Color::RGB(0, 0, 0));
 	canvas.clear();
@@ -40,7 +43,9 @@ pub fn main() {
 				Message::WorldUpdate(pvec) => {
 					canvas.set_draw_color(Color::RGB(0, 0, 0));
 					canvas.clear();
-					for [x, y] in pvec.into_iter() {
+					for p_array in pvec.into_iter() {
+						let p: V2 = p_array.try_into().unwrap();
+						let [x, y]: [f32; 2] = vp.w2s(p).try_into().unwrap();
 						// overflow is okay
 						canvas
 							.filled_circle(
