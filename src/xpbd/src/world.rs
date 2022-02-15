@@ -1,28 +1,22 @@
 use rayon::prelude::*;
 
-use std::time::SystemTime;
-
 use protocol::sock::SockServer;
 
 use crate::constraint::distance::DistanceConstraint;
 use crate::constraint::volume::VolumeConstraint;
 use crate::constraint::Constraint;
 use crate::particle_group::ParticleGroup;
+use crate::time_manager::TimeManager;
 use crate::V2;
 
 pub struct World {
 	sock: SockServer,
 	pg: ParticleGroup,
 	constraints: Vec<Box<dyn Constraint>>,
+	timeman: TimeManager,
 
 	// pframe per rframe
 	ppr: usize,
-
-	// physical frametime
-	pft: f32,
-
-	// no sleep mode means no frame lock, always use all cpu
-	sleep: bool,
 }
 
 impl Default for World {
@@ -32,19 +26,13 @@ impl Default for World {
 			sock: SockServer::default(),
 			pg,
 			constraints: Vec::new(),
+			timeman: TimeManager::default(),
 			ppr: 4,
-			pft: 0.005,
-			sleep: true,
 		}
 	}
 }
 
 impl World {
-	pub fn with_pft(mut self, pft: f32) -> Self {
-		self.pft = pft;
-		self
-	}
-
 	pub fn init_test(&mut self) {
 		self.pg = Default::default();
 		self.constraints = Default::default();
@@ -56,7 +44,7 @@ impl World {
 					x,
 					y,
 					15,
-					6,
+					3,
 					0.02,
 					1e-4 * (0.5f32).powf(m as f32),
 					1e-6 * (0.1f32).powf(n as f32),
@@ -159,7 +147,8 @@ impl World {
 			constraint.pre_iteration();
 		}
 		for _ in 0..iteration {
-			self.constraints.par_iter_mut()
+			self.constraints
+				.par_iter_mut()
 				.for_each(|constraint| constraint.step(dt));
 		}
 	}
@@ -172,39 +161,19 @@ impl World {
 	pub fn run(&mut self) {
 		self.init_test();
 		let mut frame_id = 0;
-		let mut dt = 0f32;
 		self.send_msg();
+		self.timeman.set(true);
 		loop {
-			let start_time = SystemTime::now();
 			if frame_id > 1000 {
 				frame_id = 0;
 				self.init_test();
 			} else {
 				frame_id += 1;
 			}
+			let dt = self.timeman.take_time();
 			self.update_frame(dt, 20);
-			let duration = SystemTime::now()
-				.duration_since(start_time)
-				.unwrap()
-				.as_micros() as f32 / 1e6;
-			dt = if duration < self.pft {
-				if self.sleep {
-					std::thread::sleep(std::time::Duration::from_micros(
-						((self.pft - duration) * 1e6) as u64
-					));
-					self.pft
-				} else {
-					duration
-				}
-			} else {
-				// laggy
-				self.pft
-			};
 			if frame_id % self.ppr == 0 {
 				self.send_msg();
-			}
-			if frame_id % 100 == 0 {
-				eprint!("[2K{:.2}ms\r", (duration - self.pft) * 1e3);
 			}
 		}
 	}
