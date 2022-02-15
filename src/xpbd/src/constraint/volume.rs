@@ -1,3 +1,4 @@
+use crate::constraint::ParticleList;
 use crate::constraint::Constraint;
 use crate::particle::PRef;
 use crate::V2;
@@ -14,20 +15,21 @@ fn area_p(p1: V2, p2: V2, p3: V2) -> f32 {
 }
 
 pub struct VolumeConstraint {
-	p: [PRef; 3],
+	ps: ParticleList,
 	s0: f32,
 	lambda: f32,
 	compliance: f32,
 }
 
 impl VolumeConstraint {
-	pub fn new(p: [PRef; 3]) -> Self {
-		let p0 = p[0].lock().unwrap().get_pos();
-		let p1 = p[1].lock().unwrap().get_pos();
-		let p2 = p[2].lock().unwrap().get_pos();
+	pub fn new(ps: Vec<PRef>) -> Self {
+		let ps = ParticleList::new(ps);
+		let p0 = ps[0].lock().unwrap().get_pos();
+		let p1 = ps[1].lock().unwrap().get_pos();
+		let p2 = ps[2].lock().unwrap().get_pos();
 		let s0 = area_p(p0, p1, p2);
 		Self {
-			p,
+			ps,
 			s0,
 			lambda: 0f32,
 			compliance: 1e-9,
@@ -50,9 +52,9 @@ impl Constraint for VolumeConstraint {
 	}
 
 	fn step(&mut self, dt: f32) {
-		let mut p0_mut = self.p[0].lock().unwrap();
-		let mut p1_mut = self.p[1].lock().unwrap();
-		let mut p2_mut = self.p[2].lock().unwrap();
+		let mut p0_mut = self.ps[0].lock().unwrap();
+		let mut p1_mut = self.ps[1].lock().unwrap();
+		let mut p2_mut = self.ps[2].lock().unwrap();
 
 		let imass0 = p0_mut.get_imass();
 		let imass1 = p1_mut.get_imass();
