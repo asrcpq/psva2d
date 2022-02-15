@@ -6,7 +6,8 @@ use crate::V2;
 use crate::particle::Particle;
 use crate::particle_group::ParticleGroup;
 use crate::constraint::Constraint;
-use crate::constraint::distance_constraint::DistanceConstraint;
+use crate::constraint::distance::DistanceConstraint;
+use crate::constraint::volume::VolumeConstraint;
 
 pub struct World {
 	sock: SockServer,
@@ -27,19 +28,41 @@ impl Default for World {
 
 impl World {
 	pub fn init_test(&mut self) {
-		let p = Particle::new_ref(f32::INFINITY, V2::new(300., 100.), V2::new(0., 0.));
-		let mut last_p = p.clone();
-		self.pg.add_particle(p);
-		for i in 1..=10 {
-			let p = Particle::new_ref(
+		let x0 = 300.;
+		let y0 = 100.;
+		let dx = 10.;
+		let dy = 10.;
+		let p0 = Particle::new_ref(f32::INFINITY, V2::new(x0, y0), V2::new(0., 0.));
+		let p1 = Particle::new_ref(f32::INFINITY, V2::new(x0, y0 + dy), V2::new(0., 0.));
+		self.pg.add_particle(p0.clone());
+		self.pg.add_particle(p1.clone());
+		let mut last_p0 = p0;
+		let mut last_p1 = p1;
+		for i in 1..=30 {
+			let p0 = Particle::new_ref(
 				1.,
-				V2::new(300. + i as f32 * 30., 100.),
+				V2::new(x0 + i as f32 * dx, y0),
 				V2::new(0., 10.),
 			);
-			self.pg.add_particle(p.clone());
-			let dc = DistanceConstraint::new_constraint(last_p, p.clone());
-			self.constraints.push(dc);
-			last_p = p;
+			let p1 = Particle::new_ref(
+				1.,
+				V2::new(x0 + i as f32 * dx, y0 + dy),
+				V2::new(0., 10.),
+			);
+			self.pg.add_particle(p0.clone());
+			self.pg.add_particle(p1.clone());
+			let dc0 = DistanceConstraint::new_constraint(last_p0.clone(), p0.clone());
+			let dc1 = DistanceConstraint::new_constraint(last_p1.clone(), p1.clone());
+			let dc2 = DistanceConstraint::new_constraint(p0.clone(), p1.clone());
+			self.constraints.push(dc0);
+			self.constraints.push(dc1);
+			self.constraints.push(dc2);
+			let vc0 = VolumeConstraint::new_constraint([last_p0, last_p1.clone(), p0.clone()]);
+			let vc1 = VolumeConstraint::new_constraint([last_p1, p0.clone(), p1.clone()]);
+			self.constraints.push(vc0);
+			self.constraints.push(vc1);
+			last_p0 = p0;
+			last_p1 = p1;
 		}
 	}
 
@@ -52,11 +75,16 @@ impl World {
 		protocol::Message::WorldUpdate(result)
 	}
 
-	fn update_frame(&mut self, dt: f32) {
+	fn update_frame(&mut self, dt: f32, iteration: usize) {
 		if dt == 0f32 { return }
 		self.pg.update(dt);
 		for constraint in self.constraints.iter_mut() {
-			constraint.step(dt);
+			constraint.reset_lambda();
+		}
+		for _ in 0..iteration {
+			for constraint in self.constraints.iter_mut() {
+				constraint.step(dt);
+			}
 		}
 	}
 
@@ -70,7 +98,7 @@ impl World {
 		self.send_msg();
 		loop {
 			let start_time = SystemTime::now();
-			self.update_frame(dt);
+			self.update_frame(dt, 10);
 			let duration = SystemTime::now()
 				.duration_since(start_time)
 				.unwrap()

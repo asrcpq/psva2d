@@ -43,7 +43,7 @@ pub fn main() {
 						canvas.filled_circle(
 							x as i16,
 							y as i16,
-							5,
+							3,
 							Color::RGB(0, 255, 0),
 						).unwrap();
 					}

@@ -6,6 +6,8 @@ pub struct DistanceConstraint {
 	p1: PRef,
 	p2: PRef,
 	l0: f32,
+	lambda: f32,
+	compliance: f32,
 }
 
 impl DistanceConstraint {
@@ -16,13 +18,19 @@ impl DistanceConstraint {
 			p1,
 			p2,
 			l0: (pos1 - pos2).magnitude(),
+			lambda: 0f32,
+			compliance: 1e-7,
 		};
 		Box::new(result)
 	}
 }
 
 impl Constraint for DistanceConstraint {
-	fn step(&mut self, _dt: f32) {
+	fn reset_lambda(&mut self) {
+		self.lambda = 0f32;
+	}
+
+	fn step(&mut self, dt: f32) {
 		let mut p1_mut = self.p1.borrow_mut();
 		let mut p2_mut = self.p2.borrow_mut();
 		let imass1 = p1_mut.get_imass();
@@ -36,7 +44,12 @@ impl Constraint for DistanceConstraint {
 			dp = V2::new(0.0, 1.0);
 		}
 		let dl = l - self.l0;
-		let correct = -0.1 * dp.normalize() * dl / imass;
+		// note: efficiency can be improved
+		let compliance_t = self.compliance / dt.powi(2);
+		let dlambda =
+			(-dl - compliance_t * self.lambda) / (imass + compliance_t);
+		let correct = dlambda * dp.normalize();
+		self.lambda += dlambda;
 
 		p1_mut.add_pos(correct * imass1);
 		p2_mut.add_pos(-correct * imass2);
