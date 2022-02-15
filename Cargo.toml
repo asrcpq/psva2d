@@ -1,6 +1,6 @@
 [workspace]
 members = [
-	"src/frontend_sdl",
+	"src/frontend",
 	"src/xpbd",
 	"src/protocol",
 ]

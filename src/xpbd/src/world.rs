@@ -28,10 +28,10 @@ impl Default for World {
 
 impl World {
 	pub fn init_test(&mut self) {
-		let x0 = 300.;
-		let y0 = 100.;
-		let dx = 5.;
-		let dy = 5.;
+		let x0 = 0.;
+		let y0 = 1.;
+		let dx = 0.02;
+		let dy = 0.02;
 		let p0 =
 			Particle::new_ref(f32::INFINITY, V2::new(x0, y0), V2::new(0., 0.));
 		let p1 = Particle::new_ref(
@@ -47,12 +47,12 @@ impl World {
 			let p0 = Particle::new_ref(
 				1.,
 				V2::new(x0 + i as f32 * dx, y0),
-				V2::new(0., 10.),
+				V2::new(0., -9.8),
 			);
 			let p1 = Particle::new_ref(
 				1.,
 				V2::new(x0 + i as f32 * dx, y0 + dy),
-				V2::new(0., 10.),
+				V2::new(0., -9.8),
 			);
 			self.pg.add_particle(p0.clone());
 			self.pg.add_particle(p1.clone());
