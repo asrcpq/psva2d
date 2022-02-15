@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::particle::PRef;
-use crate::{V2, C2};
+use crate::{C2, V2};
 
 pub struct ParticleGroup {
 	csize: V2,

@@ -1,17 +1,18 @@
-use sdl2::gfx::primitives::DrawRenderer;
-use sdl2::pixels::Color;
 use sdl2::event::Event;
+use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
 
-use protocol::Message;
 use protocol::sock::SockClient;
+use protocol::Message;
 
 pub fn main() {
 	let mut sock = SockClient::default();
 	eprintln!("Connection ok");
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
-	let window = video_subsystem.window("psva2d", 800, 600)
+	let window = video_subsystem
+		.window("psva2d", 800, 600)
 		.position_centered()
 		.build()
 		.unwrap();
@@ -23,10 +24,11 @@ pub fn main() {
 	'running: loop {
 		for event in event_pump.poll_iter() {
 			match event {
-				Event::Quit {..} |
-				Event::KeyDown { keycode: Some(Keycode::Q), .. } => {
-					break 'running
-				},
+				Event::Quit { .. }
+				| Event::KeyDown {
+					keycode: Some(Keycode::Q),
+					..
+				} => break 'running,
 				_ => {}
 			}
 		}
@@ -40,14 +42,16 @@ pub fn main() {
 					canvas.clear();
 					for [x, y] in pvec.into_iter() {
 						// overflow is okay
-						canvas.filled_circle(
-							x as i16,
-							y as i16,
-							3,
-							Color::RGB(0, 255, 0),
-						).unwrap();
+						canvas
+							.filled_circle(
+								x as i16,
+								y as i16,
+								2,
+								Color::RGB(0, 255, 0),
+							)
+							.unwrap();
 					}
-				},
+				}
 				Message::Nop => break,
 			}
 		}

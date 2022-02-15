@@ -1,5 +1,5 @@
-use crate::particle::PRef;
 use crate::constraint::Constraint;
+use crate::particle::PRef;
 use crate::V2;
 
 // fn area_f(x1: f32, y1: f32, x2: f32, y2: f32, x3: f32, y3: f32) -> f32 {
@@ -7,8 +7,10 @@ use crate::V2;
 // }
 
 fn area_p(p1: V2, p2: V2, p3: V2) -> f32 {
-	let a = p1[0] * p2[1] + p2[0] * p3[1] + p3[0] * p1[1] -
-		p3[0] * p2[1] - p1[0] * p3[1] - p2[0] * p1[1];
+	let a = p1[0] * p2[1] + p2[0] * p3[1] + p3[0] * p1[1]
+		- p3[0] * p2[1]
+		- p1[0] * p3[1]
+		- p2[0] * p1[1];
 	a * 0.5
 }
 
@@ -20,18 +22,26 @@ pub struct VolumeConstraint {
 }
 
 impl VolumeConstraint {
-	pub fn new_constraint(p: [PRef; 3]) -> Box<dyn Constraint> {
+	pub fn new(p: [PRef; 3]) -> Self {
 		let p0 = p[0].borrow().get_pos();
 		let p1 = p[1].borrow().get_pos();
 		let p2 = p[2].borrow().get_pos();
 		let s0 = area_p(p0, p1, p2);
-		let result = Self {
+		Self {
 			p,
 			s0,
 			lambda: 0f32,
-			compliance: 1e-7,
-		};
-		Box::new(result)
+			compliance: 1e-9,
+		}
+	}
+
+	pub fn with_compliance(mut self, c: f32) -> Self {
+		self.compliance = c;
+		self
+	}
+
+	pub fn build(self) -> Box<dyn Constraint> {
+		Box::new(self)
 	}
 }
 
@@ -49,7 +59,9 @@ impl Constraint for VolumeConstraint {
 		let imass1 = p1_mut.get_imass();
 		let imass2 = p2_mut.get_imass();
 		let imass = imass0 + imass1 + imass2;
-		if imass == 0.0 { return }
+		if imass == 0.0 {
+			return;
+		}
 
 		let pos0 = p0_mut.get_pos();
 		let pos1 = p1_mut.get_pos();
@@ -68,9 +80,9 @@ impl Constraint for VolumeConstraint {
 		let grad1 = V2::new(y2 - y0, x0 - x2) * 0.5;
 		let grad2 = V2::new(y0 - y1, x1 - x0) * 0.5;
 
-		let beta = imass0 * grad0.magnitude().powi(2) +
-			imass1 * grad1.magnitude().powi(2) +
-			imass2 * grad2.magnitude().powi(2);
+		let beta = imass0 * grad0.magnitude().powi(2)
+			+ imass1 * grad1.magnitude().powi(2)
+			+ imass2 * grad2.magnitude().powi(2);
 		let compliance_t = self.compliance / dt.powi(2);
 		let dlambda =
 			(-ds - compliance_t * self.lambda) / (beta + compliance_t);
