@@ -7,11 +7,10 @@ use crate::V2;
 // }
 
 fn area_p(p1: V2, p2: V2, p3: V2) -> f32 {
-	let a = p1[0] * p2[1] + p2[0] * p3[1] + p3[0] * p1[1]
+	p1[0] * p2[1] + p2[0] * p3[1] + p3[0] * p1[1]
 		- p3[0] * p2[1]
 		- p1[0] * p3[1]
-		- p2[0] * p1[1];
-	a * 0.5
+		- p2[0] * p1[1]
 }
 
 pub struct VolumeConstraint {
@@ -76,9 +75,9 @@ impl Constraint for VolumeConstraint {
 		let ds = s - self.s0;
 		// todo: handle dup point?
 
-		let grad0 = V2::new(y1 - y2, x2 - x1) * 0.5;
-		let grad1 = V2::new(y2 - y0, x0 - x2) * 0.5;
-		let grad2 = V2::new(y0 - y1, x1 - x0) * 0.5;
+		let grad0 = V2::new(y1 - y2, x2 - x1);
+		let grad1 = V2::new(y2 - y0, x0 - x2);
+		let grad2 = V2::new(y0 - y1, x1 - x0);
 
 		let beta = imass0 * grad0.magnitude().powi(2)
 			+ imass1 * grad1.magnitude().powi(2)

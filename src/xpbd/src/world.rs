@@ -13,7 +13,7 @@ pub struct World {
 	sock: SockServer,
 	pg: ParticleGroup,
 	constraints: Vec<Box<dyn Constraint>>,
-	ppr: usize, // p frame per r frame
+	ppr: usize,    // p frame per r frame
 	pframe_t: u64, // micros
 }
 
@@ -38,19 +38,35 @@ impl World {
 			for n in 0..6 {
 				let x = -2.5 + 0.5 * m as f32;
 				let y = 0.5 + 0.5 * n as f32;
-				self.add_test_block(x, y, 15, 3, 0.02, 1e-4 * (0.5f32).powf(m as f32));
+				self.add_test_block(
+					x,
+					y,
+					15,
+					3,
+					0.02,
+					1e-4 * (0.5f32).powf(m as f32),
+					1e-6 * (0.1f32).powf(n as f32),
+				);
 			}
 		}
 	}
 
-	fn add_test_block(&mut self, x0: f32, y0: f32, x: usize, y: usize, size: f32, compl: f32) {
+	#[allow(clippy::all)]
+	fn add_test_block(
+		&mut self,
+		x0: f32,
+		y0: f32,
+		x: usize,
+		y: usize,
+		size: f32,
+		compl_d: f32,
+		compl_v: f32,
+	) {
 		let mut ps = vec![];
 		for idx in 0..x {
 			let mut pline = vec![];
 			for idy in 0..y {
-				let w = if idx == 0 {
-					f32::INFINITY
-				} else {1.0};
+				let w = if idx == 0 { f32::INFINITY } else { 1.0 };
 				let p = Particle::new_ref(
 					w,
 					V2::new(x0 + size * idx as f32, y0 + size * idy as f32),
@@ -63,26 +79,51 @@ impl World {
 		}
 		for idx in 1..x {
 			for idy in 0..y {
-				let dc = DistanceConstraint::new(ps[idx][idy].clone(), ps[idx - 1][idy].clone())
-					.with_compliance(compl)
-					.build();
+				let dc = DistanceConstraint::new(
+					ps[idx][idy].clone(),
+					ps[idx - 1][idy].clone(),
+				)
+				.with_compliance(compl_d)
+				.build();
 				self.constraints.push(dc);
 			}
 		}
 		for idx in 0..x {
 			for idy in 1..y {
-				let dc = DistanceConstraint::new(ps[idx][idy].clone(), ps[idx][idy - 1].clone())
-					.with_compliance(compl)
-					.build();
+				let dc = DistanceConstraint::new(
+					ps[idx][idy].clone(),
+					ps[idx][idy - 1].clone(),
+				)
+				.with_compliance(compl_d)
+				.build();
 				self.constraints.push(dc);
 			}
 		}
 		for idx in 1..x {
 			for idy in 1..y {
-				let dc = DistanceConstraint::new(ps[idx][idy].clone(), ps[idx - 1][idy - 1].clone())
-					.with_compliance(compl)
-					.build();
+				let dc = DistanceConstraint::new(
+					ps[idx][idy].clone(),
+					ps[idx - 1][idy - 1].clone(),
+				)
+				.with_compliance(compl_d)
+				.build();
 				self.constraints.push(dc);
+				let vc = VolumeConstraint::new([
+					ps[idx][idy].clone(),
+					ps[idx][idy - 1].clone(),
+					ps[idx - 1][idy - 1].clone(),
+				])
+				.with_compliance(compl_v)
+				.build();
+				self.constraints.push(vc);
+				let vc = VolumeConstraint::new([
+					ps[idx][idy].clone(),
+					ps[idx - 1][idy].clone(),
+					ps[idx - 1][idy - 1].clone(),
+				])
+				.with_compliance(compl_v)
+				.build();
+				self.constraints.push(vc);
 			}
 		}
 	}

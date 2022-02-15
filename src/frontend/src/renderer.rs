@@ -1,6 +1,6 @@
+use sdl2::pixels::Color;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
-use sdl2::pixels::Color;
 
 use crate::viewport::Viewport;
 use crate::V2;
@@ -31,14 +31,8 @@ impl Renderer {
 			let p: V2 = p_array.try_into().unwrap();
 			let [x, y]: [f32; 2] = self.vp.w2s(p).try_into().unwrap();
 			// overflow is okay
-			self.canvas
-				.draw_point((
-					x as i32,
-					y as i32,
-				))
-				.unwrap();
+			self.canvas.draw_point((x as i32, y as i32)).unwrap();
 		}
 		self.canvas.present();
 	}
 }
-
