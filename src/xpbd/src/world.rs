@@ -13,6 +13,8 @@ pub struct World {
 	sock: SockServer,
 	pg: ParticleGroup,
 	constraints: Vec<Box<dyn Constraint>>,
+	ppr: usize, // p frame per r frame
+	pframe_t: u64, // micros
 }
 
 impl Default for World {
@@ -22,57 +24,66 @@ impl Default for World {
 			sock: SockServer::default(),
 			pg,
 			constraints: Vec::new(),
+			ppr: 4,
+			pframe_t: 5000,
 		}
 	}
 }
 
 impl World {
 	pub fn init_test(&mut self) {
-		let x0 = 0.;
-		let y0 = 1.;
-		let dx = 0.02;
-		let dy = 0.02;
-		let p0 =
-			Particle::new_ref(f32::INFINITY, V2::new(x0, y0), V2::new(0., 0.));
-		let p1 = Particle::new_ref(
-			f32::INFINITY,
-			V2::new(x0, y0 + dy),
-			V2::new(0., 0.),
-		);
-		self.pg.add_particle(p0.clone());
-		self.pg.add_particle(p1.clone());
-		let mut last_p0 = p0;
-		let mut last_p1 = p1;
-		for i in 1..=15 {
-			let p0 = Particle::new_ref(
-				1.,
-				V2::new(x0 + i as f32 * dx, y0),
-				V2::new(0., -9.8),
-			);
-			let p1 = Particle::new_ref(
-				1.,
-				V2::new(x0 + i as f32 * dx, y0 + dy),
-				V2::new(0., -9.8),
-			);
-			self.pg.add_particle(p0.clone());
-			self.pg.add_particle(p1.clone());
-			let dc0 =
-				DistanceConstraint::new(last_p0.clone(), p0.clone()).build();
-			let dc1 =
-				DistanceConstraint::new(last_p1.clone(), p1.clone()).build();
-			let dc2 = DistanceConstraint::new(p0.clone(), p1.clone()).build();
-			self.constraints.push(dc0);
-			self.constraints.push(dc1);
-			self.constraints.push(dc2);
-			let vc0 =
-				VolumeConstraint::new([last_p0, last_p1.clone(), p0.clone()])
+		self.pg = Default::default();
+		self.constraints = Default::default();
+		for m in 0..10 {
+			for n in 0..6 {
+				let x = -2.5 + 0.5 * m as f32;
+				let y = 0.5 + 0.5 * n as f32;
+				self.add_test_block(x, y, 15, 3, 0.02, 1e-4 * (0.5f32).powf(m as f32));
+			}
+		}
+	}
+
+	fn add_test_block(&mut self, x0: f32, y0: f32, x: usize, y: usize, size: f32, compl: f32) {
+		let mut ps = vec![];
+		for idx in 0..x {
+			let mut pline = vec![];
+			for idy in 0..y {
+				let w = if idx == 0 {
+					f32::INFINITY
+				} else {1.0};
+				let p = Particle::new_ref(
+					w,
+					V2::new(x0 + size * idx as f32, y0 + size * idy as f32),
+					V2::new(0., -9.8),
+				);
+				self.pg.add_particle(p.clone());
+				pline.push(p);
+			}
+			ps.push(pline);
+		}
+		for idx in 1..x {
+			for idy in 0..y {
+				let dc = DistanceConstraint::new(ps[idx][idy].clone(), ps[idx - 1][idy].clone())
+					.with_compliance(compl)
 					.build();
-			let vc1 = VolumeConstraint::new([last_p1, p0.clone(), p1.clone()])
-				.build();
-			self.constraints.push(vc0);
-			self.constraints.push(vc1);
-			last_p0 = p0;
-			last_p1 = p1;
+				self.constraints.push(dc);
+			}
+		}
+		for idx in 0..x {
+			for idy in 1..y {
+				let dc = DistanceConstraint::new(ps[idx][idy].clone(), ps[idx][idy - 1].clone())
+					.with_compliance(compl)
+					.build();
+				self.constraints.push(dc);
+			}
+		}
+		for idx in 1..x {
+			for idy in 1..y {
+				let dc = DistanceConstraint::new(ps[idx][idy].clone(), ps[idx - 1][idy - 1].clone())
+					.with_compliance(compl)
+					.build();
+				self.constraints.push(dc);
+			}
 		}
 	}
 
@@ -106,18 +117,26 @@ impl World {
 	}
 
 	pub fn run(&mut self) {
+		self.init_test();
 		let mut dt = 0f32;
+		let mut frame_id = 0;
 		self.send_msg();
 		loop {
 			let start_time = SystemTime::now();
-			self.update_frame(dt, 10);
+			if frame_id > 1000 {
+				frame_id = 0;
+				self.init_test();
+			} else {
+				frame_id += 1;
+			}
+			self.update_frame(dt, 20);
 			let duration = SystemTime::now()
 				.duration_since(start_time)
 				.unwrap()
-				.as_micros();
-			if duration < 20000 {
+				.as_micros() as u64;
+			if duration < self.pframe_t {
 				std::thread::sleep(std::time::Duration::from_micros(
-					20000 - duration as u64,
+					self.pframe_t - duration,
 				));
 			}
 			// recompute after sleep
@@ -126,7 +145,9 @@ impl World {
 				.unwrap()
 				.as_micros();
 			dt = duration as f32 / 1e6f32;
-			self.send_msg();
+			if frame_id % self.ppr == 0 {
+				self.send_msg();
+			}
 		}
 	}
 }

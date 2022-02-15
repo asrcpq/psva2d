@@ -10,8 +10,8 @@ impl Default for Viewport {
 	fn default() -> Self {
 		Self {
 			world_center: V2::new(0.0, 2.0),
-			screen_center: V2::new(400., 300.),
-			scaler: V2::new(100., -100.),
+			screen_center: V2::new(800., 500.),
+			scaler: V2::new(200., -200.),
 		}
 	}
 }
