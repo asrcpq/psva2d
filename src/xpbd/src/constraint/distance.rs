@@ -1,10 +1,10 @@
 use crate::constraint::Constraint;
+use crate::constraint::ParticleList;
 use crate::particle::PRef;
 use crate::V2;
 
 pub struct DistanceConstraint {
-	p1: PRef,
-	p2: PRef,
+	ps: ParticleList,
 	l0: f32,
 	lambda: f32,
 	compliance: f32,
@@ -12,11 +12,11 @@ pub struct DistanceConstraint {
 
 impl DistanceConstraint {
 	pub fn new(p1: PRef, p2: PRef) -> Self {
-		let pos1 = p1.lock().unwrap().get_pos();
-		let pos2 = p2.lock().unwrap().get_pos();
+		let ps = ParticleList::new(vec![p1, p2]);
+		let pos1 = ps[0].lock().unwrap().get_pos();
+		let pos2 = ps[1].lock().unwrap().get_pos();
 		Self {
-			p1,
-			p2,
+			ps,
 			l0: (pos1 - pos2).magnitude(),
 			lambda: 0f32,
 			compliance: 1e-7,
@@ -39,8 +39,8 @@ impl Constraint for DistanceConstraint {
 	}
 
 	fn step(&mut self, dt: f32) {
-		let mut p1_mut = self.p1.lock().unwrap();
-		let mut p2_mut = self.p2.lock().unwrap();
+		let mut p1_mut = self.ps[0].lock().unwrap();
+		let mut p2_mut = self.ps[1].lock().unwrap();
 		let imass1 = p1_mut.get_imass();
 		let imass2 = p2_mut.get_imass();
 		let imass = imass1 + imass2;

@@ -14,6 +14,8 @@ pub struct World {
 	pg: ParticleGroup,
 	constraints: Vec<Box<dyn Constraint>>,
 	timeman: TimeManager,
+	bench_mode: bool,
+	cutoff_frame: usize,
 
 	// pframe per rframe
 	ppr: usize,
@@ -27,12 +29,21 @@ impl Default for World {
 			pg,
 			constraints: Vec::new(),
 			timeman: TimeManager::default(),
+			bench_mode: false,
+			cutoff_frame: 0,
 			ppr: 4,
 		}
 	}
 }
 
 impl World {
+	pub fn bench_mode(mut self, frame_count: usize) -> Self {
+		self.timeman = self.timeman.video_render();
+		self.cutoff_frame = frame_count;
+		self.bench_mode = true;
+		self
+	}
+
 	pub fn init_test(&mut self) {
 		self.pg = Default::default();
 		self.constraints = Default::default();
@@ -109,7 +120,7 @@ impl World {
 				.with_compliance(compl_d)
 				.build();
 				self.constraints.push(dc);
-				let vc = VolumeConstraint::new([
+				let vc = VolumeConstraint::new(vec![
 					ps[idx][idy].clone(),
 					ps[idx][idy - 1].clone(),
 					ps[idx - 1][idy - 1].clone(),
@@ -117,7 +128,7 @@ impl World {
 				.with_compliance(compl_v)
 				.build();
 				self.constraints.push(vc);
-				let vc = VolumeConstraint::new([
+				let vc = VolumeConstraint::new(vec![
 					ps[idx][idy].clone(),
 					ps[idx - 1][idy].clone(),
 					ps[idx - 1][idy - 1].clone(),
@@ -154,6 +165,7 @@ impl World {
 	}
 
 	fn send_msg(&mut self) {
+		if self.bench_mode { return }
 		let msg = self.update_msg().to_bytes();
 		self.sock.send_msg(&msg);
 	}
@@ -162,9 +174,8 @@ impl World {
 		self.init_test();
 		let mut frame_id = 0;
 		self.send_msg();
-		self.timeman.set(true);
 		loop {
-			if frame_id > 1000 {
+			if self.cutoff_frame == 0 && frame_id > 1000 {
 				frame_id = 0;
 				self.init_test();
 			} else {
@@ -174,6 +185,9 @@ impl World {
 			self.update_frame(dt, 20);
 			if frame_id % self.ppr == 0 {
 				self.send_msg();
+				if self.cutoff_frame > 0 && frame_id / self.ppr == self.cutoff_frame {
+					return
+				}
 			}
 		}
 	}

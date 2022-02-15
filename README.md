@@ -1,7 +1,5 @@
 # Todo:
 
-* time manager
-
 * bench
 
 * material

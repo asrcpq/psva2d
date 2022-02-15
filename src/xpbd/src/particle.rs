@@ -25,6 +25,10 @@ impl Particle {
 		Arc::new(Mutex::new(result))
 	}
 
+	pub fn get_id(&self) -> usize {
+		self.id
+	}
+
 	pub fn get_pos(&self) -> V2 {
 		self.pos
 	}
