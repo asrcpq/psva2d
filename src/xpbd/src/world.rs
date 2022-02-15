@@ -2,12 +2,12 @@ use std::time::SystemTime;
 
 use protocol::sock::SockServer;
 
-use crate::V2;
-use crate::particle::Particle;
-use crate::particle_group::ParticleGroup;
-use crate::constraint::Constraint;
 use crate::constraint::distance::DistanceConstraint;
 use crate::constraint::volume::VolumeConstraint;
+use crate::constraint::Constraint;
+use crate::particle::Particle;
+use crate::particle_group::ParticleGroup;
+use crate::V2;
 
 pub struct World {
 	sock: SockServer,
@@ -30,15 +30,20 @@ impl World {
 	pub fn init_test(&mut self) {
 		let x0 = 300.;
 		let y0 = 100.;
-		let dx = 10.;
-		let dy = 10.;
-		let p0 = Particle::new_ref(f32::INFINITY, V2::new(x0, y0), V2::new(0., 0.));
-		let p1 = Particle::new_ref(f32::INFINITY, V2::new(x0, y0 + dy), V2::new(0., 0.));
+		let dx = 5.;
+		let dy = 5.;
+		let p0 =
+			Particle::new_ref(f32::INFINITY, V2::new(x0, y0), V2::new(0., 0.));
+		let p1 = Particle::new_ref(
+			f32::INFINITY,
+			V2::new(x0, y0 + dy),
+			V2::new(0., 0.),
+		);
 		self.pg.add_particle(p0.clone());
 		self.pg.add_particle(p1.clone());
 		let mut last_p0 = p0;
 		let mut last_p1 = p1;
-		for i in 1..=30 {
+		for i in 1..=15 {
 			let p0 = Particle::new_ref(
 				1.,
 				V2::new(x0 + i as f32 * dx, y0),
@@ -51,14 +56,19 @@ impl World {
 			);
 			self.pg.add_particle(p0.clone());
 			self.pg.add_particle(p1.clone());
-			let dc0 = DistanceConstraint::new_constraint(last_p0.clone(), p0.clone());
-			let dc1 = DistanceConstraint::new_constraint(last_p1.clone(), p1.clone());
-			let dc2 = DistanceConstraint::new_constraint(p0.clone(), p1.clone());
+			let dc0 =
+				DistanceConstraint::new(last_p0.clone(), p0.clone()).build();
+			let dc1 =
+				DistanceConstraint::new(last_p1.clone(), p1.clone()).build();
+			let dc2 = DistanceConstraint::new(p0.clone(), p1.clone()).build();
 			self.constraints.push(dc0);
 			self.constraints.push(dc1);
 			self.constraints.push(dc2);
-			let vc0 = VolumeConstraint::new_constraint([last_p0, last_p1.clone(), p0.clone()]);
-			let vc1 = VolumeConstraint::new_constraint([last_p1, p0.clone(), p1.clone()]);
+			let vc0 =
+				VolumeConstraint::new([last_p0, last_p1.clone(), p0.clone()])
+					.build();
+			let vc1 = VolumeConstraint::new([last_p1, p0.clone(), p1.clone()])
+				.build();
 			self.constraints.push(vc0);
 			self.constraints.push(vc1);
 			last_p0 = p0;
@@ -76,7 +86,9 @@ impl World {
 	}
 
 	fn update_frame(&mut self, dt: f32, iteration: usize) {
-		if dt == 0f32 { return }
+		if dt == 0f32 {
+			return;
+		}
 		self.pg.update(dt);
 		for constraint in self.constraints.iter_mut() {
 			constraint.reset_lambda();
@@ -105,7 +117,7 @@ impl World {
 				.as_micros();
 			if duration < 20000 {
 				std::thread::sleep(std::time::Duration::from_micros(
-					20000 - duration as u64
+					20000 - duration as u64,
 				));
 			}
 			// recompute after sleep

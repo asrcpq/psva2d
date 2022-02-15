@@ -14,6 +14,6 @@ impl Message {
 	}
 
 	pub fn from_bytes(bytes: &[u8]) -> Self {
-		bincode::deserialize(&bytes[..]).unwrap()
+		bincode::deserialize(bytes).unwrap()
 	}
 }

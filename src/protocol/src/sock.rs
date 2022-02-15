@@ -1,5 +1,5 @@
-use std::os::unix::net::{UnixListener, UnixStream};
 use std::io::{Read, Write};
+use std::os::unix::net::{UnixListener, UnixStream};
 
 use crate::Message;
 
@@ -28,8 +28,8 @@ impl SockServer {
 	pub fn send_msg(&mut self, msg: &[u8]) {
 		loop {
 			if let Some(stream) = self.stream.as_mut() {
-				if stream.write_all(&msg).is_ok() {
-					return
+				if stream.write_all(msg).is_ok() {
+					return;
 				}
 			}
 			eprintln!("Waiting");
@@ -64,10 +64,10 @@ impl SockClient {
 				}
 				Err(e) => {
 					if e.kind() == std::io::ErrorKind::WouldBlock {
-						return Message::Nop
+						return Message::Nop;
 					}
 					panic!("{:?}", e);
-				},
+				}
 			}
 		}
 		std::thread::sleep(std::time::Duration::from_secs(1));
@@ -75,11 +75,11 @@ impl SockClient {
 			Ok(s) => {
 				s.set_nonblocking(true).unwrap();
 				self.stream = Some(s);
-			},
+			}
 			Err(e) => {
 				eprintln!("{:?}", e);
 				eprintln!("Waiting connection");
-			},
+			}
 		};
 		Message::Nop
 	}
