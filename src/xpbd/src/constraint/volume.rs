@@ -22,9 +22,9 @@ pub struct VolumeConstraint {
 
 impl VolumeConstraint {
 	pub fn new(p: [PRef; 3]) -> Self {
-		let p0 = p[0].borrow().get_pos();
-		let p1 = p[1].borrow().get_pos();
-		let p2 = p[2].borrow().get_pos();
+		let p0 = p[0].lock().unwrap().get_pos();
+		let p1 = p[1].lock().unwrap().get_pos();
+		let p2 = p[2].lock().unwrap().get_pos();
 		let s0 = area_p(p0, p1, p2);
 		Self {
 			p,
@@ -45,14 +45,14 @@ impl VolumeConstraint {
 }
 
 impl Constraint for VolumeConstraint {
-	fn reset_lambda(&mut self) {
+	fn pre_iteration(&mut self) {
 		self.lambda = 0f32;
 	}
 
 	fn step(&mut self, dt: f32) {
-		let mut p0_mut = self.p[0].borrow_mut();
-		let mut p1_mut = self.p[1].borrow_mut();
-		let mut p2_mut = self.p[2].borrow_mut();
+		let mut p0_mut = self.p[0].lock().unwrap();
+		let mut p1_mut = self.p[1].lock().unwrap();
+		let mut p2_mut = self.p[2].lock().unwrap();
 
 		let imass0 = p0_mut.get_imass();
 		let imass1 = p1_mut.get_imass();

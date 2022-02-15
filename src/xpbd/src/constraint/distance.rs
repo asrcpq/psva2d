@@ -12,8 +12,8 @@ pub struct DistanceConstraint {
 
 impl DistanceConstraint {
 	pub fn new(p1: PRef, p2: PRef) -> Self {
-		let pos1 = p1.borrow().get_pos();
-		let pos2 = p2.borrow().get_pos();
+		let pos1 = p1.lock().unwrap().get_pos();
+		let pos2 = p2.lock().unwrap().get_pos();
 		Self {
 			p1,
 			p2,
@@ -34,13 +34,13 @@ impl DistanceConstraint {
 }
 
 impl Constraint for DistanceConstraint {
-	fn reset_lambda(&mut self) {
+	fn pre_iteration(&mut self) {
 		self.lambda = 0f32;
 	}
 
 	fn step(&mut self, dt: f32) {
-		let mut p1_mut = self.p1.borrow_mut();
-		let mut p2_mut = self.p2.borrow_mut();
+		let mut p1_mut = self.p1.lock().unwrap();
+		let mut p2_mut = self.p2.lock().unwrap();
 		let imass1 = p1_mut.get_imass();
 		let imass2 = p2_mut.get_imass();
 		let imass = imass1 + imass2;

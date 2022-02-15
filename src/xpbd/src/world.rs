@@ -1,3 +1,5 @@
+use rayon::prelude::*;
+
 use std::time::SystemTime;
 
 use protocol::sock::SockServer;
@@ -5,7 +7,6 @@ use protocol::sock::SockServer;
 use crate::constraint::distance::DistanceConstraint;
 use crate::constraint::volume::VolumeConstraint;
 use crate::constraint::Constraint;
-use crate::particle::Particle;
 use crate::particle_group::ParticleGroup;
 use crate::V2;
 
@@ -42,7 +43,7 @@ impl World {
 					x,
 					y,
 					15,
-					3,
+					6,
 					0.02,
 					1e-4 * (0.5f32).powf(m as f32),
 					1e-6 * (0.1f32).powf(n as f32),
@@ -67,12 +68,11 @@ impl World {
 			let mut pline = vec![];
 			for idy in 0..y {
 				let w = if idx == 0 { f32::INFINITY } else { 1.0 };
-				let p = Particle::new_ref(
+				let p = self.pg.add_particle(
 					w,
 					V2::new(x0 + size * idx as f32, y0 + size * idy as f32),
 					V2::new(0., -9.8),
 				);
-				self.pg.add_particle(p.clone());
 				pline.push(p);
 			}
 			ps.push(pline);
@@ -131,7 +131,7 @@ impl World {
 	fn update_msg(&self) -> protocol::Message {
 		let mut result = Vec::new();
 		for p in self.pg.get_particles().into_iter() {
-			let pos = p.borrow().get_pos();
+			let pos = p.lock().unwrap().get_pos();
 			result.push(pos.try_into().unwrap())
 		}
 		protocol::Message::WorldUpdate(result)
@@ -143,12 +143,11 @@ impl World {
 		}
 		self.pg.update(dt);
 		for constraint in self.constraints.iter_mut() {
-			constraint.reset_lambda();
+			constraint.pre_iteration();
 		}
 		for _ in 0..iteration {
-			for constraint in self.constraints.iter_mut() {
-				constraint.step(dt);
-			}
+			self.constraints.par_iter_mut()
+				.for_each(|constraint| constraint.step(dt));
 		}
 	}
 
@@ -159,7 +158,6 @@ impl World {
 
 	pub fn run(&mut self) {
 		self.init_test();
-		let mut dt = 0f32;
 		let mut frame_id = 0;
 		self.send_msg();
 		loop {
@@ -170,7 +168,7 @@ impl World {
 			} else {
 				frame_id += 1;
 			}
-			self.update_frame(dt, 20);
+			self.update_frame(self.pframe_t as f32 / 1e6, 20);
 			let duration = SystemTime::now()
 				.duration_since(start_time)
 				.unwrap()
@@ -180,14 +178,11 @@ impl World {
 					self.pframe_t - duration,
 				));
 			}
-			// recompute after sleep
-			let duration = SystemTime::now()
-				.duration_since(start_time)
-				.unwrap()
-				.as_micros();
-			dt = duration as f32 / 1e6f32;
 			if frame_id % self.ppr == 0 {
 				self.send_msg();
+			}
+			if frame_id % 100 == 0 {
+				eprint!("[2K{}\r", duration as i32 - self.pframe_t as i32);
 			}
 		}
 	}
