@@ -1,12 +1,12 @@
 use crate::V2;
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
-pub type PRef = Rc<RefCell<Particle>>;
+pub type PRef = Arc<Mutex<Particle>>;
 
 #[derive(Copy, Clone)]
 pub struct Particle {
+	id: usize, // prevent dead lock
 	imass: f32,
 	pos: V2,
 	ppos: V2,
@@ -14,14 +14,15 @@ pub struct Particle {
 }
 
 impl Particle {
-	pub fn new_ref(mass: f32, pos: V2, accel: V2) -> PRef {
+	pub fn new_ref(id: usize, mass: f32, pos: V2, accel: V2) -> PRef {
 		let result = Self {
+			id,
 			imass: 1f32 / mass, // inf is handled
 			pos,
 			ppos: pos,
 			accel,
 		};
-		Rc::new(RefCell::new(result))
+		Arc::new(Mutex::new(result))
 	}
 
 	pub fn get_pos(&self) -> V2 {
