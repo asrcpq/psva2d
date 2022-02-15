@@ -1,10 +1,7 @@
 use sdl2::event::Event;
-use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
 
-use frontend::V2;
-use frontend::viewport::Viewport;
+use frontend::renderer::Renderer;
 use protocol::sock::SockClient;
 use protocol::Message;
 
@@ -14,15 +11,12 @@ pub fn main() {
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
 	let window = video_subsystem
-		.window("psva2d", 800, 600)
+		.window("psva2d", 1600, 1000)
 		.position_centered()
 		.build()
 		.unwrap();
-	let vp = Viewport::default();
-	let mut canvas = window.into_canvas().build().unwrap();
-	canvas.set_draw_color(Color::RGB(0, 0, 0));
-	canvas.clear();
-	canvas.present();
+	let canvas = window.into_canvas().build().unwrap();
+	let mut renderer = Renderer::new(canvas);
 	let mut event_pump = sdl_context.event_pump().unwrap();
 	'running: loop {
 		for event in event_pump.poll_iter() {
@@ -35,27 +29,12 @@ pub fn main() {
 				_ => {}
 			}
 		}
-		canvas.present();
 		loop {
 			let msg = sock.read_msg();
 			match msg {
 				// todo: update last only
 				Message::WorldUpdate(pvec) => {
-					canvas.set_draw_color(Color::RGB(0, 0, 0));
-					canvas.clear();
-					for p_array in pvec.into_iter() {
-						let p: V2 = p_array.try_into().unwrap();
-						let [x, y]: [f32; 2] = vp.w2s(p).try_into().unwrap();
-						// overflow is okay
-						canvas
-							.filled_circle(
-								x as i16,
-								y as i16,
-								2,
-								Color::RGB(0, 255, 0),
-							)
-							.unwrap();
-					}
+					renderer.draw_points(pvec);
 				}
 				Message::Nop => break,
 			}

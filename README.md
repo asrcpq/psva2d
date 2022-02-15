@@ -1,5 +1,7 @@
 # Todo:
 
+* text tag
+
 * render
 
 * frontend canvas & control
