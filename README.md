@@ -1,5 +1,7 @@
 # Todo:
 
+* parallel
+
 * text tag
 
 * render
@@ -12,7 +14,7 @@
 
 * collision
 
-* object builder
+* material
 
 * plastic
 
