@@ -1,25 +1,25 @@
 # Todo:
 
-* parallel
+* time manager
 
-* text tag
+* bench
+
+* material
 
 * render
 
-* frontend canvas & control
+* mouse control viewport
 
-* gif output
+* text tag
 
 * show fps(status bar)
 
 * collision
 
-* material
-
 * plastic
 
 * break
 
-* fluid
-
 * z
+
+* fluid

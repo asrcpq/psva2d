@@ -42,6 +42,7 @@ impl SockServer {
 pub struct SockClient {
 	stream: Option<UnixStream>,
 	buf: Vec<u8>,
+	connected: bool,
 }
 
 impl Default for SockClient {
@@ -49,6 +50,7 @@ impl Default for SockClient {
 		Self {
 			stream: None,
 			buf: vec![0u8; 10_000_000],
+			connected: false,
 		}
 	}
 }
@@ -70,15 +72,20 @@ impl SockClient {
 				}
 			}
 		}
-		std::thread::sleep(std::time::Duration::from_secs(1));
 		match UnixStream::connect("psva2d.socket") {
 			Ok(s) => {
+				if !self.connected {
+					eprintln!("Connected");
+					self.connected = true;
+				}
 				s.set_nonblocking(true).unwrap();
 				self.stream = Some(s);
 			}
 			Err(e) => {
-				eprintln!("{:?}", e);
-				eprintln!("Waiting connection");
+				if self.connected {
+					eprintln!("Disconnected: {:?}", e);
+					self.connected = false;
+				}
 			}
 		};
 		Message::Nop
