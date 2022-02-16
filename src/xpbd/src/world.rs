@@ -165,7 +165,9 @@ impl World {
 	}
 
 	fn send_msg(&mut self) {
-		if self.bench_mode { return }
+		if self.bench_mode {
+			return;
+		}
 		let msg = self.update_msg().to_bytes();
 		self.sock.send_msg(&msg);
 	}
@@ -185,8 +187,10 @@ impl World {
 			self.update_frame(dt, 20);
 			if frame_id % self.ppr == 0 {
 				self.send_msg();
-				if self.cutoff_frame > 0 && frame_id / self.ppr == self.cutoff_frame {
-					return
+				if self.cutoff_frame > 0
+					&& frame_id / self.ppr == self.cutoff_frame
+				{
+					return;
 				}
 			}
 		}

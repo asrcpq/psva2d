@@ -1,12 +1,6 @@
 # Todo:
 
-* bench
-
-* material
-
-* render
-
-* mouse control viewport
+* material & render
 
 * text tag
 

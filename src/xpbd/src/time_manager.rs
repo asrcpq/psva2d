@@ -32,12 +32,12 @@ impl TimeManager {
 		let now = SystemTime::now();
 		let dt = now.duration_since(self.start_time).unwrap().as_micros();
 		self.start_time = now;
-		if matches!(self.model, TimeModel::RtFrameLock) {
-			if dt < (self.pft * 1e6) as u128 {
-				std::thread::sleep(std::time::Duration::from_micros(
-					(self.pft * 1e6) as u64 - dt as u64,
-				));
-			}
+		if matches!(self.model, TimeModel::RtFrameLock)
+			&& dt < (self.pft * 1e6) as u128
+		{
+			std::thread::sleep(std::time::Duration::from_micros(
+				(self.pft * 1e6) as u64 - dt as u64,
+			));
 		}
 		self.pft
 	}
