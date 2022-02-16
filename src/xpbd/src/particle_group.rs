@@ -23,9 +23,10 @@ impl Default for ParticleGroup {
 
 impl ParticleGroup {
 	pub fn update(&mut self, dt: f32) {
-		for p in self.data.values().flatten() {
+		let old_data = std::mem::take(&mut self.data);
+		for p in old_data.into_iter().map(|(_, p)| p).flatten() {
 			p.lock().unwrap().update(dt);
-			// todo: update grid
+			self.add_pref(p);
 		}
 	}
 
@@ -43,11 +44,17 @@ impl ParticleGroup {
 
 	pub fn add_particle(&mut self, mass: f32, pos: V2, accel: V2) -> PRef {
 		let p = Particle::new_ref(self.id_alloc, mass, pos, accel);
-		let pos = p.lock().unwrap().get_pos();
 		let cpos = self.get_cpos(pos);
 		let e = self.data.entry(cpos).or_insert_with(Vec::new);
 		(*e).push(p.clone());
 		self.id_alloc += 1;
 		p
+	}
+
+	fn add_pref(&mut self, pref: PRef) {
+		let pos = pref.lock().unwrap().get_pos();
+		let cpos = self.get_cpos(pos);
+		let e = self.data.entry(cpos).or_insert_with(Vec::new);
+		(*e).push(pref);
 	}
 }

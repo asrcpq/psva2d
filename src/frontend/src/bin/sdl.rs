@@ -7,7 +7,6 @@ use protocol::Message;
 
 pub fn main() {
 	let mut sock = SockClient::default();
-	eprintln!("Connection ok");
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
 	let window = video_subsystem
