@@ -11,7 +11,7 @@ impl Default for Viewport {
 		Self {
 			world_center: V2::new(0.0, 2.0),
 			screen_center: V2::new(800., 500.),
-			scaler: V2::new(200., -200.),
+			scaler: V2::new(100., -100.),
 		}
 	}
 }

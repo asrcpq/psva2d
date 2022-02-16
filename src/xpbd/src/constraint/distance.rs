@@ -3,11 +3,20 @@ use crate::constraint::ParticleList;
 use crate::particle::PRef;
 use crate::V2;
 
+#[derive(PartialEq)]
+enum DistanceConstraintType {
+	Normal,
+	Repulsive, // collision
+	Attractive,
+}
+type DCTy = DistanceConstraintType;
+
 pub struct DistanceConstraint {
 	ps: ParticleList,
 	l0: f32,
 	lambda: f32,
 	compliance: f32,
+	ty: DCTy,
 }
 
 impl DistanceConstraint {
@@ -20,7 +29,29 @@ impl DistanceConstraint {
 			l0: (pos1 - pos2).magnitude(),
 			lambda: 0f32,
 			compliance: 1e-7,
+			ty: DCTy::Normal,
 		}
+	}
+
+	pub fn new_with_l0(p1: PRef, p2: PRef, l0: f32) -> Self {
+		let ps = ParticleList::new(vec![p1, p2]);
+		Self {
+			ps,
+			l0,
+			lambda: 0f32,
+			compliance: 1e-7,
+			ty: DCTy::Normal,
+		}
+	}
+
+	pub fn repulsive_only(mut self) -> Self {
+		self.ty = DCTy::Repulsive;
+		self
+	}
+
+	pub fn attractive_only(mut self) -> Self {
+		self.ty = DCTy::Attractive;
+		self
 	}
 
 	pub fn with_compliance(mut self, c: f32) -> Self {
@@ -50,10 +81,12 @@ impl Constraint for DistanceConstraint {
 		let mut dp = p1_mut.get_pos() - p2_mut.get_pos();
 		let l = dp.magnitude();
 		if l.abs() < f32::EPSILON {
-			eprintln!("Bad value");
+			eprintln!("Dup point detected in distance constraint!");
 			dp = V2::new(0.0, 1.0);
 		}
 		let dl = l - self.l0;
+		if self.ty == DCTy::Repulsive && dl > 0. { return }
+		else if self.ty == DCTy::Attractive && dl < 0. { return }
 		// note: efficiency can be improved
 		let compliance_t = self.compliance / dt.powi(2);
 		let dlambda =

@@ -47,18 +47,18 @@ impl World {
 	pub fn init_test(&mut self) {
 		self.pg = Default::default();
 		self.constraints = Default::default();
-		for m in 0..10 {
-			for n in 0..6 {
-				let x = -2.5 + 0.5 * m as f32;
-				let y = 0.5 + 0.5 * n as f32;
+		for m in 0..5 {
+			for n in 0..3 {
+				let x = -5.0 + 2.0 * m as f32;
+				let y = 0.5 + 1.0 * n as f32 + 0.5 * (m % 2) as f32;
 				self.add_test_block(
 					x,
 					y,
-					15,
+					25,
 					3,
-					0.02,
-					1e-4 * (0.5f32).powf(m as f32),
-					1e-6 * (0.1f32).powf(n as f32),
+					self.pg.csize(),
+					1e-4 * (0.3f32).powf(m as f32),
+					1e-7 * (0.1f32).powf(n as f32),
 				);
 			}
 		}
@@ -95,6 +95,7 @@ impl World {
 					ps[idx][idy].clone(),
 					ps[idx - 1][idy].clone(),
 				)
+				.attractive_only()
 				.with_compliance(compl_d)
 				.build();
 				self.constraints.push(dc);
@@ -106,6 +107,7 @@ impl World {
 					ps[idx][idy].clone(),
 					ps[idx][idy - 1].clone(),
 				)
+				.attractive_only()
 				.with_compliance(compl_d)
 				.build();
 				self.constraints.push(dc);
@@ -117,6 +119,7 @@ impl World {
 					ps[idx][idy].clone(),
 					ps[idx - 1][idy - 1].clone(),
 				)
+				.attractive_only()
 				.with_compliance(compl_d)
 				.build();
 				self.constraints.push(dc);
@@ -154,12 +157,14 @@ impl World {
 			return;
 		}
 		self.pg.update(dt);
+		let mut collcons = self.pg.collision_constraints();
 		for constraint in self.constraints.iter_mut() {
 			constraint.pre_iteration();
 		}
 		for _ in 0..iteration {
 			self.constraints
 				.par_iter_mut()
+				.chain(collcons.par_iter_mut())
 				.for_each(|constraint| constraint.step(dt));
 		}
 	}
