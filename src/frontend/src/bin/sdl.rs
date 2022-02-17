@@ -2,11 +2,11 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
 use frontend::renderer::Renderer;
-use protocol::sock::SockClient;
-use protocol::Message;
+use xpbd::world::World;
 
 pub fn main() {
-	let mut sock = SockClient::default();
+	let mut world = World::default();
+	world.init_test();
 	let sdl_context = sdl2::init().unwrap();
 	let video_subsystem = sdl_context.video().unwrap();
 	let window = video_subsystem
@@ -28,16 +28,9 @@ pub fn main() {
 				_ => {}
 			}
 		}
-		loop {
-			let msg = sock.read_msg();
-			match msg {
-				// todo: update last only
-				Message::WorldUpdate(pr_model) => {
-					renderer.draw_points(pr_model);
-				}
-				Message::Nop => break,
-			}
-		}
+		world.run(0.005, 4, 20);
+		let pr_model = world.pr_model();
+		renderer.draw_points(pr_model);
 		std::thread::sleep(std::time::Duration::from_millis(10));
 	}
 }

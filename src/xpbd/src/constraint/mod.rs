@@ -1,11 +1,13 @@
 pub mod distance;
 pub mod volume;
 
+use protocol::pr_model::PrConstraint;
 use crate::particle::PRef;
 
 pub trait Constraint: Send {
 	fn pre_iteration(&mut self);
 	fn step(&mut self, dt: f32);
+	fn render(&self) -> PrConstraint;
 }
 
 pub struct ParticleList {
@@ -30,6 +32,13 @@ impl ParticleList {
 		Self {
 			particles: zipped.into_iter().map(|(_, p)| p).collect(),
 		}
+	}
+
+	pub fn ids(&self) -> Vec<usize> {
+		self.particles
+			.iter()
+			.map(|x| x.try_lock().unwrap().get_id())
+			.collect()
 	}
 }
 

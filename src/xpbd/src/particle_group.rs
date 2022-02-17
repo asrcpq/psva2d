@@ -98,11 +98,13 @@ impl ParticleGroup {
 		result
 	}
 
-	pub fn pr_particles(&self) -> Vec<PrParticle> {
-		self.data
-			.values()
-			.map(|x| x.try_lock().unwrap().to_render())
-			.collect()
+	pub fn pr_particles(&self) -> HashMap<usize, PrParticle> {
+		let mut result = HashMap::new();
+		for (&id, p) in self.data.iter() {
+			let prp = p.try_lock().unwrap().render();
+			assert!(result.insert(id, prp).is_none());
+		}
+		result
 	}
 
 	fn get_cpos(&self, p: V2) -> C2 {

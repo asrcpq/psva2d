@@ -2,6 +2,7 @@ use crate::constraint::Constraint;
 use crate::constraint::ParticleList;
 use crate::particle::PRef;
 use crate::V2;
+use protocol::pr_model::PrConstraint;
 
 #[derive(PartialEq)]
 enum DistanceConstraintType {
@@ -65,6 +66,13 @@ impl DistanceConstraint {
 }
 
 impl Constraint for DistanceConstraint {
+	fn render(&self) -> PrConstraint {
+		PrConstraint {
+			id: 0,
+			particles: self.ps.ids(),
+		}
+	}
+
 	fn pre_iteration(&mut self) {
 		self.lambda = 0f32;
 	}
