@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use protocol::pr_model::PrParticle;
 use crate::particle::{PRef, Particle};
 use crate::constraint::Constraint;
 use crate::constraint::distance::DistanceConstraint;
@@ -34,7 +35,7 @@ impl ParticleGroup {
 		let old_shp = std::mem::take(&mut self.shp);
 		for pref in old_shp.into_iter().map(|(_, p)| p).flatten() {
 			let pos = {
-				let mut prev_lock = pref.lock().unwrap();
+				let mut prev_lock = pref.try_lock().unwrap();
 				prev_lock.update(dt);
 				prev_lock.get_pos()
 			};
@@ -97,8 +98,11 @@ impl ParticleGroup {
 		result
 	}
 
-	pub fn get_particles(&self) -> Vec<PRef> {
-		self.data.values().cloned().collect()
+	pub fn pr_particles(&self) -> Vec<PrParticle> {
+		self.data
+			.values()
+			.map(|x| x.try_lock().unwrap().to_render())
+			.collect()
 	}
 
 	fn get_cpos(&self, p: V2) -> C2 {

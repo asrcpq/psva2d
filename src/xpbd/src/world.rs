@@ -1,4 +1,5 @@
 use protocol::sock::SockServer;
+use protocol::pr_model::PrModel;
 
 use crate::constraint::distance::DistanceConstraint;
 use crate::constraint::volume::VolumeConstraint;
@@ -144,12 +145,11 @@ impl World {
 	}
 
 	fn update_msg(&self) -> protocol::Message {
-		let mut result = Vec::new();
-		for p in self.pg.get_particles().into_iter() {
-			let pos = p.lock().unwrap().get_pos();
-			result.push(pos.try_into().unwrap())
-		}
-		protocol::Message::WorldUpdate(result)
+		let ps = self.pg.pr_particles();
+		protocol::Message::WorldUpdate(PrModel {
+			particles: ps,
+			constraints: Vec::new()
+		})
 	}
 
 	#[cfg(not(debug_assertions))]
