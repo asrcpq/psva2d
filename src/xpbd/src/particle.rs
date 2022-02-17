@@ -52,9 +52,8 @@ impl Particle {
 		self.ppos = ppos;
 	}
 
-	pub fn to_render(&self) -> PrParticle {
+	pub fn render(&self) -> PrParticle {
 		PrParticle {
-			id: self.id,
 			pos: (self.pos[0], self.pos[1]),
 		}
 	}

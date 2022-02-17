@@ -12,3 +12,6 @@ features = ["gfx"]
 
 [dependencies.protocol]
 path = "../protocol"
+
+[dependencies.xpbd]
+path = "../xpbd"

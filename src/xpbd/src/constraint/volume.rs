@@ -2,6 +2,7 @@ use crate::constraint::Constraint;
 use crate::constraint::ParticleList;
 use crate::particle::PRef;
 use crate::V2;
+use protocol::pr_model::PrConstraint;
 
 // fn area_f(x1: f32, y1: f32, x2: f32, y2: f32, x3: f32, y3: f32) -> f32 {
 // 	x1 * y2 + x2 * y3 + x3 * y1 - x3 * y2 - x1 * y3 - x2 * y1
@@ -47,6 +48,13 @@ impl VolumeConstraint {
 }
 
 impl Constraint for VolumeConstraint {
+	fn render(&self) -> PrConstraint {
+		PrConstraint {
+			id: 0,
+			particles: self.ps.ids(),
+		}
+	}
+
 	fn pre_iteration(&mut self) {
 		self.lambda = 0f32;
 	}
