@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 pub struct PrParticle {
-	pub pos: (f32, f32),
+	pub pos: [f32; 2],
 }
 
 pub struct PrConstraint {
@@ -11,6 +11,7 @@ pub struct PrConstraint {
 	pub particles: Vec<usize>,
 }
 
+#[derive(Default)]
 pub struct PrModel {
 	pub particles: HashMap<usize, PrParticle>,
 	pub constraints: Vec<PrConstraint>,

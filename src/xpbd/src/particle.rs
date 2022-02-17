@@ -55,7 +55,7 @@ impl Particle {
 
 	pub fn render(&self) -> PrParticle {
 		PrParticle {
-			pos: (self.pos[0], self.pos[1]),
+			pos: [self.pos[0], self.pos[1]],
 		}
 	}
 }

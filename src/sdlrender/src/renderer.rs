@@ -25,10 +25,10 @@ impl Renderer {
 }
 
 impl Renderer {
-	fn map_pos(&self, pos: (f32, f32)) -> (i32, i32) {
-		let p = V2::new(pos.0, pos.1);
+	fn map_pos(&self, pos: [f32; 2]) -> [i32; 2] {
+		let p = V2::new(pos[0], pos[1]);
 		let cast = self.vp.w2s(p);
-		(cast[0] as i32, cast[1] as i32)
+		[cast[0] as i32, cast[1] as i32]
 	}
 
 	pub fn draw_points(&mut self, pr_model: PrModel) {
@@ -44,8 +44,8 @@ impl Renderer {
 					.particles
 					.get(&pr_constraint.particles[1])
 					.unwrap();
-				let (x1, y1) = self.map_pos(prp1.pos);
-				let (x2, y2) = self.map_pos(prp2.pos);
+				let [x1, y1] = self.map_pos(prp1.pos);
+				let [x2, y2] = self.map_pos(prp2.pos);
 				self.canvas
 					.aa_line(
 						x1 as i16,
@@ -60,7 +60,7 @@ impl Renderer {
 		self.canvas.set_draw_color(Color::RGB(255, 0, 255));
 		for pr_particle in pr_model.particles.values() {
 			let pos = pr_particle.pos;
-			let (x, y) = self.map_pos(pos);
+			let [x, y] = self.map_pos(pos);
 			// overflow is okay
 			self.canvas
 				.draw_points(&*vec![
