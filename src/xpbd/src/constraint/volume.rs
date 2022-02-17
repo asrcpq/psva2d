@@ -24,9 +24,9 @@ pub struct VolumeConstraint {
 impl VolumeConstraint {
 	pub fn new(ps: Vec<PRef>) -> Self {
 		let ps = ParticleList::new(ps);
-		let p0 = ps[0].lock().unwrap().get_pos();
-		let p1 = ps[1].lock().unwrap().get_pos();
-		let p2 = ps[2].lock().unwrap().get_pos();
+		let p0 = ps[0].try_lock().unwrap().get_pos();
+		let p1 = ps[1].try_lock().unwrap().get_pos();
+		let p2 = ps[2].try_lock().unwrap().get_pos();
 		let s0 = area_p(p0, p1, p2);
 		Self {
 			ps,

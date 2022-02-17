@@ -1,10 +1,12 @@
 pub mod sock;
+pub mod pr_model;
+use pr_model::PrModel;
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub enum Message {
-	WorldUpdate(Vec<[f32; 2]>),
+	WorldUpdate(PrModel),
 	Nop,
 }
 

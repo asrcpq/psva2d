@@ -32,8 +32,8 @@ pub fn main() {
 			let msg = sock.read_msg();
 			match msg {
 				// todo: update last only
-				Message::WorldUpdate(pvec) => {
-					renderer.draw_points(pvec);
+				Message::WorldUpdate(pr_model) => {
+					renderer.draw_points(pr_model);
 				}
 				Message::Nop => break,
 			}

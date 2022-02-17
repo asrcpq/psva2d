@@ -1,6 +1,7 @@
-use crate::V2;
-
 use std::sync::{Arc, Mutex};
+
+use protocol::pr_model::PrParticle;
+use crate::V2;
 
 pub type PRef = Arc<Mutex<Particle>>;
 
@@ -49,5 +50,12 @@ impl Particle {
 		let dv = self.accel * t;
 		self.pos += self.pos - self.ppos + dv * t;
 		self.ppos = ppos;
+	}
+
+	pub fn to_render(&self) -> PrParticle {
+		PrParticle {
+			id: self.id,
+			pos: (self.pos[0], self.pos[1]),
+		}
 	}
 }
