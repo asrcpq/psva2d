@@ -25,12 +25,14 @@ use winit::dpi::{LogicalSize, Size};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::{Window, WindowBuilder};
 
+use protocol::pr_model::PrModel;
+
 #[repr(C)]
 #[derive(Default, Debug, Clone)]
 struct Vertex {
-	position: [f32; 2],
+	pos: [f32; 2],
 }
-vulkano::impl_vertex!(Vertex, position);
+vulkano::impl_vertex!(Vertex, pos);
 
 fn winit_size(size: [u32; 2]) -> Size {
 	Size::new(LogicalSize::new(size[0], size[1]))
@@ -45,7 +47,7 @@ pub struct Renderer {
 	swapchain: Arc<Swapchain<Window>>,
 	framebuffers: Vec<Arc<Framebuffer>>,
 	viewport: Viewport,
-	vertex_buffer: Arc<CpuAccessibleBuffer<[Vertex]>>,
+	//vertex_buffer: Arc<CpuAccessibleBuffer<[Vertex]>>,
 	previous_frame_end: Option<Box<dyn GpuFuture>>,
 	pipeline: Arc<GraphicsPipeline>,
 	render_pass: Arc<RenderPass>,
@@ -127,26 +129,6 @@ impl Renderer {
 				.unwrap()
 		};
 
-		let vertex_buffer = CpuAccessibleBuffer::from_iter(
-			device.clone(),
-			BufferUsage::all(),
-			false,
-			[
-				Vertex {
-					position: [-0.5, -0.25],
-				},
-				Vertex {
-					position: [0.0, 0.5],
-				},
-				Vertex {
-					position: [0.25, -0.1],
-				},
-			]
-			.iter()
-			.cloned(),
-		)
-		.unwrap();
-
 		let vs = super::shader::vs::load(device.clone()).unwrap();
 		let fs = super::shader::fs::load(device.clone()).unwrap();
 
@@ -172,7 +154,7 @@ impl Renderer {
 			.vertex_shader(vs.entry_point("main").unwrap(), ())
 			.input_assembly_state(
 				InputAssemblyState::new()
-					.topology(PrimitiveTopology::PointList),
+					.topology(PrimitiveTopology::LineList),
 			)
 			.viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
 			.fragment_shader(fs.entry_point("main").unwrap(), ())
@@ -182,7 +164,7 @@ impl Renderer {
 
 		let mut viewport = Viewport {
 			origin: [0.0, 0.0],
-			dimensions: [16.0, 10.0], // TODO: fixme
+			dimensions: [0.0, 0.0], // TODO: fixme
 			depth_range: 0.0..1.0,
 		};
 
@@ -201,14 +183,32 @@ impl Renderer {
 			recreate_swapchain: false,
 			framebuffers,
 			viewport,
-			vertex_buffer,
 			previous_frame_end,
 			pipeline,
 			render_pass,
 		}
 	}
 
-	pub fn render(&mut self) {
+	pub fn render(&mut self, pr_model: PrModel) {
+		let vertex_buffer = CpuAccessibleBuffer::from_iter(
+			self.device.clone(),
+			BufferUsage::all(),
+			false,
+			pr_model.constraints
+				.iter()
+				.filter(|x| x.particles.len() == 2)
+				.map(|x| x.particles
+					.iter()
+					.map(|x| Vertex {
+						pos: pr_model.particles.get(x).unwrap().pos
+					})
+				)
+				.flatten()
+				.collect::<Vec<Vertex>>()
+				.into_iter()
+		)
+		.unwrap();
+
 		self.previous_frame_end.as_mut().unwrap().cleanup_finished();
 		if self.recreate_swapchain {
 			self.create_swapchain();
@@ -246,8 +246,8 @@ impl Renderer {
 			.unwrap()
 			.set_viewport(0, [self.viewport.clone()])
 			.bind_pipeline_graphics(self.pipeline.clone())
-			.bind_vertex_buffers(0, self.vertex_buffer.clone())
-			.draw(self.vertex_buffer.len() as u32, 1, 0, 0)
+			.bind_vertex_buffers(0, vertex_buffer.clone())
+			.draw(vertex_buffer.len() as u32, 1, 0, 0)
 			.unwrap()
 			.end_render_pass()
 			.unwrap();
