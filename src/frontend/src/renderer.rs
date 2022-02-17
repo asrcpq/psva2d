@@ -30,8 +30,16 @@ impl Renderer {
 		for p_array in pvec.into_iter() {
 			let p: V2 = p_array.try_into().unwrap();
 			let [x, y]: [f32; 2] = self.vp.w2s(p).try_into().unwrap();
+			let x = x as i32;
+			let y = y as i32;
 			// overflow is okay
-			self.canvas.draw_point((x as i32, y as i32)).unwrap();
+			self.canvas.draw_points(&*vec![
+				(x, y).into(),
+				(x - 1, y).into(),
+				(x + 1, y).into(),
+				(x, y - 1).into(),
+				(x, y + 1).into(),
+			]).unwrap();
 		}
 		self.canvas.present();
 	}

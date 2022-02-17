@@ -1,5 +1,3 @@
-use rayon::prelude::*;
-
 use protocol::sock::SockServer;
 
 use crate::constraint::distance::DistanceConstraint;
@@ -13,6 +11,7 @@ pub struct World {
 	sock: SockServer,
 	pg: ParticleGroup,
 	constraints: Vec<Box<dyn Constraint>>,
+	tmp_constraints: Vec<Box<dyn Constraint>>,
 	timeman: TimeManager,
 	bench_mode: bool,
 	cutoff_frame: usize,
@@ -28,6 +27,7 @@ impl Default for World {
 			sock: SockServer::default(),
 			pg,
 			constraints: Vec::new(),
+			tmp_constraints: Vec::new(),
 			timeman: TimeManager::default(),
 			bench_mode: false,
 			cutoff_frame: 0,
@@ -152,20 +152,34 @@ impl World {
 		protocol::Message::WorldUpdate(result)
 	}
 
+	#[cfg(not(debug_assertions))]
+	fn solve_constraints(&mut self, dt: f32) {
+		use rayon::prelude::*;
+		self.constraints
+			.par_iter_mut()
+			.chain(self.tmp_constraints.par_iter_mut())
+			.for_each(|constraint| constraint.step(dt));
+	} 
+
+	#[cfg(debug_assertions)]
+	fn solve_constraints(&mut self, dt: f32) {
+		self.constraints
+			.iter_mut()
+			.chain(self.tmp_constraints.iter_mut())
+			.for_each(|constraint| constraint.step(dt));
+	} 
+
 	fn update_frame(&mut self, dt: f32, iteration: usize) {
 		if dt == 0f32 {
 			return;
 		}
 		self.pg.update(dt);
-		let mut collcons = self.pg.collision_constraints();
+		self.tmp_constraints = self.pg.collision_constraints();
 		for constraint in self.constraints.iter_mut() {
 			constraint.pre_iteration();
 		}
 		for _ in 0..iteration {
-			self.constraints
-				.par_iter_mut()
-				.chain(collcons.par_iter_mut())
-				.for_each(|constraint| constraint.step(dt));
+			self.solve_constraints(dt);
 		}
 	}
 

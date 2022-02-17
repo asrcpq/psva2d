@@ -17,7 +17,7 @@ impl Default for ParticleGroup {
 	fn default() -> Self {
 		Self {
 			id_alloc: 0,
-			csize: 0.1,
+			csize: 0.08,
 			offset: V2::new(0., 0.),
 			shp: HashMap::new(),
 			data: HashMap::new(),

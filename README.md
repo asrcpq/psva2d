@@ -6,8 +6,6 @@
 
 * show fps(status bar)
 
-* collision
-
 * plastic
 
 * break
