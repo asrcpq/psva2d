@@ -1,6 +1,7 @@
 [workspace]
 members = [
 	"src/frontend",
+	"src/vkrender",
 	"src/xpbd",
 	"src/protocol",
 ]

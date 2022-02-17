@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use protocol::pr_model::PrParticle;
-use crate::particle::{PRef, Particle};
-use crate::constraint::Constraint;
 use crate::constraint::distance::DistanceConstraint;
+use crate::constraint::Constraint;
+use crate::particle::{PRef, Particle};
 use crate::{C2, V2};
+use protocol::pr_model::PrParticle;
 
 pub struct ParticleGroup {
 	id_alloc: usize,
@@ -45,26 +45,38 @@ impl ParticleGroup {
 		}
 	}
 
-	fn collcon_of_2_pvecs(&self, pv1: &Vec<PRef>, pv2: &Vec<PRef>) -> Vec<Box<dyn Constraint>> {
+	fn collcon_of_2_pvecs(
+		&self,
+		pv1: &[PRef],
+		pv2: &[PRef],
+	) -> Vec<Box<dyn Constraint>> {
 		let mut result = Vec::new();
 		for p1 in pv1.iter() {
 			for p2 in pv2.iter() {
 				{
 					let pp1 = p1.try_lock().unwrap();
 					if let Ok(ref mut pp2) = p2.try_lock() {
-						if pp1.get_id() >= pp2.get_id() { continue }
+						if pp1.get_id() >= pp2.get_id() {
+							continue;
+						}
 						// Note: is it enough or we should make is looser?
 						// during iteration more collisions could happen
-						if (pp1.get_pos() - pp2.get_pos()).magnitude() > self.csize {
-							continue
+						if (pp1.get_pos() - pp2.get_pos()).magnitude()
+							> self.csize
+						{
+							continue;
 						}
 					} else {
-						continue
+						continue;
 					}
 				}
-				let collcon = DistanceConstraint::new_with_l0(p1.clone(), p2.clone(), self.csize)
-					.repulsive_only()
-					.build();
+				let collcon = DistanceConstraint::new_with_l0(
+					p1.clone(),
+					p2.clone(),
+					self.csize,
+				)
+				.repulsive_only()
+				.build();
 				result.push(collcon);
 			}
 		}
@@ -79,7 +91,7 @@ impl ParticleGroup {
 		for (cell, pvec) in &self.shp {
 			if pvec.is_empty() {
 				eprintln!("WARN: a cell has empty value, this is a bug");
-				continue
+				continue;
 			}
 			for dcell in vec![
 				C2::new(0, 0),
@@ -87,7 +99,9 @@ impl ParticleGroup {
 				C2::new(1, -1),
 				C2::new(1, 0),
 				C2::new(1, 1),
-			].into_iter() {
+			]
+			.into_iter()
+			{
 				let cell2 = cell + dcell;
 				if let Some(pvec2) = self.shp.get(&cell2) {
 					let collcons = self.collcon_of_2_pvecs(pvec, pvec2);

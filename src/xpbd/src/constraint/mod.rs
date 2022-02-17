@@ -1,8 +1,8 @@
 pub mod distance;
 pub mod volume;
 
-use protocol::pr_model::PrConstraint;
 use crate::particle::PRef;
+use protocol::pr_model::PrConstraint;
 
 pub trait Constraint: Send {
 	fn pre_iteration(&mut self);

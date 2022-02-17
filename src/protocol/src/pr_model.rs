@@ -15,3 +15,14 @@ pub struct PrModel {
 	pub particles: HashMap<usize, PrParticle>,
 	pub constraints: Vec<PrConstraint>,
 }
+
+impl std::fmt::Debug for PrModel {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		writeln!(
+			f,
+			"PrModel with plen: {}, clen: {}",
+			self.particles.len(),
+			self.constraints.len(),
+		)
+	}
+}

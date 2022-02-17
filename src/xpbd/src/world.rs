@@ -1,13 +1,19 @@
-use protocol::pr_model::PrModel;
-use protocol::pr_model::PrConstraint;
+use std::sync::mpsc::Sender;
+use std::time::{Duration, SystemTime};
 
 use crate::constraint::distance::DistanceConstraint;
 use crate::constraint::volume::VolumeConstraint;
 use crate::constraint::Constraint;
 use crate::particle_group::ParticleGroup;
 use crate::V2;
+use protocol::pr_model::PrConstraint;
+use protocol::pr_model::PrModel;
 
 pub struct World {
+	dt: f32,
+	ppr: usize,
+	iteration: usize,
+
 	pg: ParticleGroup,
 	constraints: Vec<Box<dyn Constraint>>,
 	tmp_constraints: Vec<Box<dyn Constraint>>,
@@ -17,6 +23,10 @@ impl Default for World {
 	fn default() -> Self {
 		let pg = ParticleGroup::default();
 		Self {
+			dt: 0.005,
+			ppr: 4,
+			iteration: 20,
+
 			pg,
 			constraints: Vec::new(),
 			tmp_constraints: Vec::new(),
@@ -134,10 +144,8 @@ impl World {
 
 	pub fn pr_model(&self) -> PrModel {
 		let ps = self.pg.pr_particles();
-		let cs: Vec<PrConstraint> = self.constraints
-			.iter()
-			.map(|x| x.render())
-			.collect();
+		let cs: Vec<PrConstraint> =
+			self.constraints.iter().map(|x| x.render()).collect();
 		PrModel {
 			particles: ps,
 			constraints: cs,
@@ -151,7 +159,7 @@ impl World {
 			.par_iter_mut()
 			.chain(self.tmp_constraints.par_iter_mut())
 			.for_each(|constraint| constraint.step(dt));
-	} 
+	}
 
 	#[cfg(debug_assertions)]
 	fn solve_constraints(&mut self, dt: f32) {
@@ -159,7 +167,7 @@ impl World {
 			.iter_mut()
 			.chain(self.tmp_constraints.iter_mut())
 			.for_each(|constraint| constraint.step(dt));
-	} 
+	}
 
 	fn update_frame(&mut self, dt: f32, iteration: usize) {
 		if dt == 0f32 {
@@ -175,9 +183,27 @@ impl World {
 		}
 	}
 
-	pub fn run(&mut self, dt: f32, frame: usize, iteration: usize) {
-		for _ in 0..frame {
-			self.update_frame(dt, iteration);
+	pub fn run(&mut self) {
+		for _ in 0..self.ppr {
+			self.update_frame(self.dt, self.iteration);
+		}
+	}
+
+	pub fn run_thread(&mut self, tx: Sender<PrModel>) {
+		let mut start_time = SystemTime::now();
+		let rtime: u64 = (self.dt * 1e6 * self.ppr as f32) as u64;
+		loop {
+			self.run();
+			let model = self.pr_model();
+			tx.send(model).unwrap();
+
+			let next_time = SystemTime::now();
+			let dt = next_time.duration_since(start_time).unwrap().as_micros()
+				as u64;
+			if dt < rtime {
+				std::thread::sleep(Duration::from_micros(rtime - dt));
+			}
+			start_time = next_time;
 		}
 	}
 }

@@ -93,8 +93,11 @@ impl Constraint for DistanceConstraint {
 			dp = V2::new(0.0, 1.0);
 		}
 		let dl = l - self.l0;
-		if self.ty == DCTy::Repulsive && dl > 0. { return }
-		else if self.ty == DCTy::Attractive && dl < 0. { return }
+		if self.ty == DCTy::Repulsive && dl > 0.
+			|| self.ty == DCTy::Attractive && dl < 0.
+		{
+			return;
+		}
 		// note: efficiency can be improved
 		let compliance_t = self.compliance / dt.powi(2);
 		let dlambda =

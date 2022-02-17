@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
-use protocol::pr_model::PrParticle;
 use crate::V2;
+use protocol::pr_model::PrParticle;
 
 pub type PRef = Arc<Mutex<Particle>>;
 
@@ -47,6 +47,7 @@ impl Particle {
 			return;
 		} // fixed
 		let ppos = self.pos;
+		// TODO: apply accel to ppos for stability
 		let dv = self.accel * t;
 		self.pos += self.pos - self.ppos + dv * t;
 		self.ppos = ppos;
