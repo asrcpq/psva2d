@@ -35,20 +35,18 @@ pub fn main() {
 				let mut world = World::default();
 				world.init_test();
 				world
-			},
+			}
 			Some(handle) => handle.join().unwrap(),
 		};
 		let pr_model = world.pr_model();
 		let next_time = SystemTime::now();
-		let dt = next_time.duration_since(start_time)
-			.unwrap()
-			.as_micros();
+		let dt = next_time.duration_since(start_time).unwrap().as_micros();
 		if dt < 20_000 {
 			std::thread::sleep(Duration::from_micros(20_000 - dt as u64));
 		}
 		start_time = next_time;
 		join_handle = Some(std::thread::spawn(move || {
-			world.run(0.005, 4, 20);
+			world.run();
 			world
 		}));
 		renderer.draw_points(pr_model);
