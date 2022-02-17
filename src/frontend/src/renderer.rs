@@ -34,19 +34,6 @@ impl Renderer {
 	pub fn draw_points(&mut self, pr_model: PrModel) {
 		self.canvas.set_draw_color(Color::RGB(0, 0, 0));
 		self.canvas.clear();
-		self.canvas.set_draw_color(Color::RGB(0, 255, 0));
-		for pr_particle in pr_model.particles.values() {
-			let pos = pr_particle.pos;
-			let (x, y) = self.map_pos(pos);
-			// overflow is okay
-			self.canvas.draw_points(&*vec![
-				(x, y).into(),
-				(x - 1, y).into(),
-				(x + 1, y).into(),
-				(x, y - 1).into(),
-				(x, y + 1).into(),
-			]).unwrap();
-		}
 		for pr_constraint in pr_model.constraints.into_iter() {
 			if pr_constraint.particles.len() == 2 {
 				let prp1 = pr_model.particles.get(&pr_constraint.particles[0]).unwrap();
@@ -58,9 +45,22 @@ impl Renderer {
 					y1 as i16,
 					x2 as i16,
 					y2 as i16,
-					Color::RGB(255, 0, 0),
+					Color::RGB(0, 255, 255),
 				).unwrap();
 			}
+		}
+		self.canvas.set_draw_color(Color::RGB(255, 0, 255));
+		for pr_particle in pr_model.particles.values() {
+			let pos = pr_particle.pos;
+			let (x, y) = self.map_pos(pos);
+			// overflow is okay
+			self.canvas.draw_points(&*vec![
+				(x, y).into(),
+				(x - 1, y).into(),
+				(x + 1, y).into(),
+				(x, y - 1).into(),
+				(x, y + 1).into(),
+			]).unwrap();
 		}
 		self.canvas.present();
 	}
