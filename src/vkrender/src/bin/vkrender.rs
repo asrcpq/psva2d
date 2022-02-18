@@ -20,7 +20,7 @@ fn main() {
 			elp.send_event(pr_model).unwrap();
 		}
 	});
-	let mut last_model = PrModel::default();
+	let mut last_model: Option<PrModel> = None;
 	event_loop.run(move |event, _, control_flow| match event {
 		Event::WindowEvent {
 			event: WindowEvent::CloseRequested,
@@ -35,10 +35,12 @@ fn main() {
 			renderer.recreate_swapchain = true;
 		}
 		Event::RedrawEventsCleared => {
-			renderer.render(std::mem::take(&mut last_model));
+			if let Some(pr_model) = last_model.take() {
+				renderer.render(pr_model);
+			}
 		}
 		Event::UserEvent(pr_model) => {
-			last_model = pr_model;
+			last_model = Some(pr_model);
 		}
 		_ => {}
 	});
