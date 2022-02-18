@@ -164,7 +164,7 @@ impl Renderer {
 
 		let mut viewport = Viewport {
 			origin: [0.0, 0.0],
-			dimensions: [0.0, 0.0], // TODO: fixme
+			dimensions: [0.0, 0.0],
 			depth_range: 0.0..1.0,
 		};
 
@@ -287,6 +287,7 @@ impl Renderer {
 	}
 
 	fn create_swapchain(&mut self) {
+		eprintln!("Recreate swapchain");
 		let dimensions: [u32; 2] = self.surface.window().inner_size().into();
 		let (new_swapchain, new_images) =
 			match self.swapchain.recreate().dimensions(dimensions).build() {

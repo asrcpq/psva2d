@@ -1,8 +1,10 @@
 # Todo:
 
-* material & render
+* camera
 
-* text tag
+* texture
+
+* material & render
 
 * show fps(status bar)
 

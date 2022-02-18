@@ -1,7 +1,5 @@
 #![allow(clippy::all)]
 
-// TODO: use glsl, no recompile
-
 pub mod vs {
 	vulkano_shaders::shader! {
 		ty: "vertex",
