@@ -10,8 +10,8 @@ use protocol::pr_model::PrConstraint;
 use protocol::pr_model::PrModel;
 
 pub struct World {
-	dt: f32,
-	ppr: usize,
+	pub dt: f32,
+	pub ppr: usize,
 	iteration: usize,
 
 	pg: ParticleGroup,
@@ -38,7 +38,7 @@ impl World {
 	pub fn init_test(&mut self) {
 		self.pg = Default::default();
 		self.constraints = Default::default();
-		for m in 0..5 {
+		for m in 0..3 {
 			for n in 0..3 {
 				let x = -5.0 + 2.0 * m as f32;
 				let y = 0.5 + 1.0 * n as f32 + 0.5 * (m % 2) as f32;
@@ -48,8 +48,8 @@ impl World {
 					25,
 					3,
 					self.pg.csize(),
-					1e-4 * (0.3f32).powf(m as f32),
-					1e-7 * (0.1f32).powf(n as f32),
+					1e-5 * (0.1f32).powf(m as f32),
+					1e-8 * (0.1f32).powf(n as f32),
 				);
 			}
 		}
@@ -138,6 +138,22 @@ impl World {
 				.with_compliance(compl_v)
 				.build();
 				self.constraints.push(vc);
+				// let vc = VolumeConstraint::new(vec![
+				// 	ps[idx - 1][idy].clone(),
+				// 	ps[idx][idy - 1].clone(),
+				// 	ps[idx - 1][idy - 1].clone(),
+				// ])
+				// .with_compliance(compl_v)
+				// .build();
+				// self.constraints.push(vc);
+				// let vc = VolumeConstraint::new(vec![
+				// 	ps[idx - 1][idy].clone(),
+				// 	ps[idx][idy - 1].clone(),
+				// 	ps[idx][idy].clone(),
+				// ])
+				// .with_compliance(compl_v)
+				// .build();
+				// self.constraints.push(vc);
 			}
 		}
 	}

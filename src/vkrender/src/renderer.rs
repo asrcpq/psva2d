@@ -56,8 +56,8 @@ pub struct Renderer {
 impl Renderer {
 	pub fn new(
 		el: &EventLoopWindowTarget<protocol::pr_model::PrModel>,
+		window_size: [u32; 2],
 	) -> Self {
-		let window_size = [1600u32, 1000];
 		let required_extensions = vulkano_win::required_extensions();
 		let instance =
 			Instance::new(None, Version::V1_1, &required_extensions, None)
