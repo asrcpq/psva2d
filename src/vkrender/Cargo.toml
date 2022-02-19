@@ -10,8 +10,6 @@ vulkano-shaders = "^0.28"
 vulkano-win = "^0.28"
 winit = "^0.26"
 
-[dependencies.protocol]
-path = "../protocol"
-
-[dependencies.xpbd]
-path = "../xpbd"
+protocol = {path = "../protocol"}
+xpbd = {path = "../xpbd"}
+material = {path = "../material"}

@@ -1,12 +1,8 @@
 # Todo:
 
-* vk real view
-
 * world
 
-* solid model
-
-* camera
+* solid model/background model(coordinate grid is a type of it)
 
 * material & render & texture
 
