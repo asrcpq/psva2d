@@ -118,7 +118,7 @@ mod test {
 		let a0 = area_p(p0, p1, p2);
 		let a1 = area_p(p0, p2, p1);
 		eprintln!("{} {}", a0, a1);
-		assert!((a0.abs() - 1.).abs() < 1e-6);
+		assert!((a0.abs() - 2.).abs() < 1e-6);
 		assert!((a0 + a1).abs() < 1e-6);
 	}
 }
