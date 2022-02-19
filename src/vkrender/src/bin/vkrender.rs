@@ -4,7 +4,7 @@ use winit::event::{Event, KeyboardInput, VirtualKeyCode as Vkc , WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop, EventLoopProxy};
 
 use protocol::pr_model::PrModel;
-use vkrender::view::View;
+use protocol::view::View;
 
 fn main() {
 	let window_size = [1600u32, 1000];

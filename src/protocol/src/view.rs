@@ -1,4 +1,4 @@
-use protocol::pr_model::PrModel;
+use crate::pr_model::PrModel;
 
 pub struct View {
 	world_center: [f32; 2],
@@ -26,6 +26,18 @@ impl Default for View {
 }
 
 impl View {
+	pub fn with_screen_center(mut self, screen_center: [f32; 2]) -> Self {
+		self.screen_center = screen_center;
+		self
+	}
+
+	pub fn with_scaler0(mut self, scaler0: [f32; 2]) -> Self {
+		self.scaler0 = scaler0.clone();
+		self.sscaler = 1.0;
+		self.scaler = scaler0;
+		self
+	}
+
 	pub fn move_view(&mut self, direction: u8) { // lurd
 		match direction {
 			0 => self.world_center[0] -= self.move_distance,
