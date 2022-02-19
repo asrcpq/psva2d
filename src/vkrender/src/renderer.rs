@@ -3,6 +3,7 @@ use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer, TypedBufferAccess};
 use vulkano::command_buffer::{
 	AutoCommandBufferBuilder, CommandBufferUsage, SubpassContents,
 };
+use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::device::physical::{PhysicalDevice, PhysicalDeviceType};
 use vulkano::device::{Device, DeviceExtensions, Features, Queue};
 use vulkano::image::view::ImageView;
@@ -13,7 +14,7 @@ use vulkano::pipeline::graphics::input_assembly::{
 };
 use vulkano::pipeline::graphics::vertex_input::BuffersDefinition;
 use vulkano::pipeline::graphics::viewport::{Viewport, ViewportState};
-use vulkano::pipeline::GraphicsPipeline;
+use vulkano::pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint};
 use vulkano::render_pass::{Framebuffer, RenderPass, Subpass};
 use vulkano::swapchain::{
 	self, AcquireError, Surface, Swapchain, SwapchainCreationError,
@@ -25,6 +26,8 @@ use winit::dpi::{LogicalSize, Size};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::{Window, WindowBuilder};
 
+use crate::camera::Camera;
+use crate::shader;
 use protocol::pr_model::PrModel;
 
 #[repr(C)]
@@ -129,8 +132,8 @@ impl Renderer {
 				.unwrap()
 		};
 
-		let vs = super::shader::vs::load(device.clone()).unwrap();
-		let fs = super::shader::fs::load(device.clone()).unwrap();
+		let vs = shader::vs::load(device.clone()).unwrap();
+		let fs = shader::fs::load(device.clone()).unwrap();
 
 		let render_pass = vulkano::single_pass_renderpass!(
 			device.clone(),
@@ -188,7 +191,7 @@ impl Renderer {
 		}
 	}
 
-	pub fn render(&mut self, pr_model: PrModel) {
+	pub fn render(&mut self, pr_model: PrModel, camera: Camera) {
 		let vertex_buffer = CpuAccessibleBuffer::from_iter(
 			self.device.clone(),
 			BufferUsage::all(),
@@ -205,6 +208,20 @@ impl Renderer {
 				.flatten()
 				.collect::<Vec<Vertex>>()
 				.into_iter(),
+		)
+		.unwrap();
+
+		let uniform_buffer = CpuAccessibleBuffer::from_data(
+			self.device.clone(),
+			BufferUsage::uniform_buffer(),
+			false,
+			camera,
+		).unwrap();
+
+		let layout = self.pipeline.layout().descriptor_set_layouts().get(0).unwrap();
+		let set = PersistentDescriptorSet::new(
+			layout.clone(),
+			[WriteDescriptorSet::buffer(0, uniform_buffer)],
 		)
 		.unwrap();
 
@@ -245,6 +262,12 @@ impl Renderer {
 			.unwrap()
 			.set_viewport(0, [self.viewport.clone()])
 			.bind_pipeline_graphics(self.pipeline.clone())
+			.bind_descriptor_sets(
+				PipelineBindPoint::Graphics,
+				self.pipeline.layout().clone(),
+				0,
+				set.clone(),
+			)
 			.bind_vertex_buffers(0, vertex_buffer.clone())
 			.draw(vertex_buffer.len() as u32, 1, 0, 0)
 			.unwrap()

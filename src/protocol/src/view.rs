@@ -1,5 +1,3 @@
-use crate::pr_model::PrModel;
-
 pub struct View {
 	world_center: [f32; 2],
 	screen_center: [f32; 2],
@@ -79,9 +77,11 @@ impl View {
 		]
 	}
 
-	pub fn transform_model(&self, pr_model: &mut PrModel) {
-		for particle in pr_model.particles.values_mut() {
-			particle.pos = self.w2s(particle.pos);
-		}
+	pub fn get_c(&self) -> [f32; 2] {
+		self.world_center
+	}
+
+	pub fn get_r(&self) -> [f32; 2] {
+		self.scaler
 	}
 }
