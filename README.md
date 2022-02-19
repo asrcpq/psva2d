@@ -1,6 +1,10 @@
 # Todo:
 
-* ground
+* vk real view
+
+* world
+
+* solid model
 
 * camera
 

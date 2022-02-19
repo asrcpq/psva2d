@@ -4,7 +4,7 @@ use sdl2::keyboard::Keycode;
 use std::time::{Duration, SystemTime};
 
 use frontend::renderer::Renderer;
-use xpbd::world::World;
+use xpbd::pworld::PWorld;
 
 pub fn main() {
 	let sdl_context = sdl2::init().unwrap();
@@ -17,7 +17,7 @@ pub fn main() {
 	let canvas = window.into_canvas().build().unwrap();
 	let mut renderer = Renderer::new(canvas);
 	let mut event_pump = sdl_context.event_pump().unwrap();
-	let mut join_handle: Option<std::thread::JoinHandle<World>> = None;
+	let mut join_handle: Option<std::thread::JoinHandle<PWorld>> = None;
 	let mut start_time = SystemTime::now();
 	'running: loop {
 		for event in event_pump.poll_iter() {
@@ -32,7 +32,7 @@ pub fn main() {
 		}
 		let mut world = match join_handle {
 			None => {
-				let mut world = World::default();
+				let mut world = PWorld::default();
 				world.init_test();
 				world
 			}
