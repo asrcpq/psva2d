@@ -5,4 +5,5 @@ members = [
 	"src/xpbd",
 	"src/protocol",
 	"src/material",
+	"src/viewer",
 ]

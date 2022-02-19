@@ -2,16 +2,16 @@ use std::sync::mpsc::channel;
 use winit::event::{Event, KeyboardInput, VirtualKeyCode as Vkc, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop, EventLoopProxy};
 
-use material::render_model::RenderModel;
+use material::texture_indexer::TextureIndexer;
 use protocol::pr_model::PrModel;
 use protocol::view::View;
 use vkrender::camera::Camera;
-use vkrender::renderer::Renderer;
+use vkrender::vkrender::VkRender;
 
 fn main() {
 	let window_size = [1600u32, 1000];
 	let event_loop = EventLoop::with_user_event();
-	let mut renderer = Renderer::new(&event_loop, window_size);
+	let mut vkr = VkRender::new(&event_loop, window_size);
 	let mut view = View::default();
 	let elp: EventLoopProxy<PrModel> = event_loop.create_proxy();
 	let _ = std::thread::spawn(move || {
@@ -32,7 +32,7 @@ fn main() {
 				*control_flow = ControlFlow::Exit;
 			}
 			WindowEvent::Resized(_) => {
-				renderer.recreate_swapchain = true;
+				vkr.recreate_swapchain = true;
 			}
 			WindowEvent::KeyboardInput {
 				input:
@@ -55,8 +55,8 @@ fn main() {
 		},
 		Event::RedrawEventsCleared => {
 			if let Some(pr_model) = last_model.take() {
-				let render_model = RenderModel::simple_from_pr_model(&pr_model);
-				renderer.render(render_model, Camera::from_view(&view));
+				let render_model = TextureIndexer::default().compile_model(&pr_model);//FIXME
+				vkr.render(render_model, Camera::from_view(&view));
 			}
 		}
 		Event::UserEvent(pr_model) => {

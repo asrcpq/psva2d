@@ -17,6 +17,7 @@ fn area_p(p1: V2, p2: V2, p3: V2) -> f32 {
 
 #[derive(Clone)]
 pub struct VolumeConstraint {
+	id: usize, // for triangle render, 0 for no render
 	ps: ParticleList,
 	s0: f32,
 	lambda: f32,
@@ -31,11 +32,17 @@ impl VolumeConstraint {
 		let p2 = ps[2].try_lock().unwrap().get_pos();
 		let s0 = area_p(p0, p1, p2);
 		Self {
+			id: 0,
 			ps,
 			s0,
 			lambda: 0f32,
 			compliance: 1e-9,
 		}
+	}
+
+	pub fn with_id(mut self, id: usize) -> Self {
+		self.id = id;
+		self
 	}
 
 	pub fn with_compliance(mut self, c: f32) -> Self {
@@ -51,7 +58,7 @@ impl VolumeConstraint {
 impl Constraint for VolumeConstraint {
 	fn render(&self) -> PrConstraint {
 		PrConstraint {
-			id: 0,
+			id: self.id,
 			particles: self.ps.ids(),
 		}
 	}
