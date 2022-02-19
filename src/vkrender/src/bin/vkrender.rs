@@ -1,10 +1,11 @@
 use std::sync::mpsc::channel;
-use vkrender::renderer::Renderer;
 use winit::event::{Event, KeyboardInput, VirtualKeyCode as Vkc, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop, EventLoopProxy};
 
 use protocol::pr_model::PrModel;
 use protocol::view::View;
+use vkrender::camera::Camera;
+use vkrender::renderer::Renderer;
 
 fn main() {
 	let window_size = [1600u32, 1000];
@@ -52,9 +53,8 @@ fn main() {
 			_ => {}
 		},
 		Event::RedrawEventsCleared => {
-			if let Some(mut pr_model) = last_model.take() {
-				view.transform_model(&mut pr_model);
-				renderer.render(pr_model);
+			if let Some(pr_model) = last_model.take() {
+				renderer.render(pr_model, Camera::from_view(&view));
 			}
 		}
 		Event::UserEvent(pr_model) => {
