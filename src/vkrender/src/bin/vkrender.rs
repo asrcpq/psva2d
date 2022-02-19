@@ -2,6 +2,7 @@ use std::sync::mpsc::channel;
 use winit::event::{Event, KeyboardInput, VirtualKeyCode as Vkc, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop, EventLoopProxy};
 
+use material::render_model::RenderModel;
 use protocol::pr_model::PrModel;
 use protocol::view::View;
 use vkrender::camera::Camera;
@@ -54,7 +55,8 @@ fn main() {
 		},
 		Event::RedrawEventsCleared => {
 			if let Some(pr_model) = last_model.take() {
-				renderer.render(pr_model, Camera::from_view(&view));
+				let render_model = RenderModel::simple_from_pr_model(&pr_model);
+				renderer.render(render_model, Camera::from_view(&view));
 			}
 		}
 		Event::UserEvent(pr_model) => {

@@ -18,7 +18,7 @@ impl Default for View {
 			sscaler: 1.0,
 			scaler0,
 
-			move_distance: 0.1,
+			move_distance: 0.2,
 		}
 	}
 }

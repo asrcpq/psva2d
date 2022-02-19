@@ -28,7 +28,7 @@ use winit::window::{Window, WindowBuilder};
 
 use crate::camera::Camera;
 use crate::shader;
-use protocol::pr_model::PrModel;
+use material::render_model::RenderModel;
 
 #[repr(C)]
 #[derive(Default, Debug, Clone)]
@@ -156,7 +156,7 @@ impl Renderer {
 			.vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
 			.vertex_shader(vs.entry_point("main").unwrap(), ())
 			.input_assembly_state(
-				InputAssemblyState::new().topology(PrimitiveTopology::LineList),
+				InputAssemblyState::new().topology(PrimitiveTopology::TriangleList),
 			)
 			.viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
 			.fragment_shader(fs.entry_point("main").unwrap(), ())
@@ -191,18 +191,18 @@ impl Renderer {
 		}
 	}
 
-	pub fn render(&mut self, pr_model: PrModel, camera: Camera) {
+	pub fn render(&mut self, render_model: RenderModel, camera: Camera) {
 		let vertex_buffer = CpuAccessibleBuffer::from_iter(
 			self.device.clone(),
 			BufferUsage::all(),
 			false,
-			pr_model
-				.constraints
+			render_model
+				.face_groups[0]
+				.faces
 				.iter()
-				.filter(|x| x.particles.len() == 2)
 				.map(|x| {
-					x.particles.iter().map(|x| Vertex {
-						pos: pr_model.particles.get(x).unwrap().pos,
+					x.vid.iter().map(|x| Vertex {
+						pos: *render_model.vs.get(x).unwrap(),
 					})
 				})
 				.flatten()
