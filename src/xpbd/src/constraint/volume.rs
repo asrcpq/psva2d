@@ -15,6 +15,7 @@ fn area_p(p1: V2, p2: V2, p3: V2) -> f32 {
 		- p2[0] * p1[1]
 }
 
+#[derive(Clone)]
 pub struct VolumeConstraint {
 	ps: ParticleList,
 	s0: f32,

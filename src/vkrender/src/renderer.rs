@@ -156,7 +156,8 @@ impl Renderer {
 			.vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
 			.vertex_shader(vs.entry_point("main").unwrap(), ())
 			.input_assembly_state(
-				InputAssemblyState::new().topology(PrimitiveTopology::TriangleList),
+				InputAssemblyState::new()
+					.topology(PrimitiveTopology::TriangleList),
 			)
 			.viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
 			.fragment_shader(fs.entry_point("main").unwrap(), ())
@@ -196,8 +197,7 @@ impl Renderer {
 			self.device.clone(),
 			BufferUsage::all(),
 			false,
-			render_model
-				.face_groups[0]
+			render_model.face_groups[0]
 				.faces
 				.iter()
 				.map(|x| {
@@ -216,9 +216,15 @@ impl Renderer {
 			BufferUsage::uniform_buffer(),
 			false,
 			camera,
-		).unwrap();
+		)
+		.unwrap();
 
-		let layout = self.pipeline.layout().descriptor_set_layouts().get(0).unwrap();
+		let layout = self
+			.pipeline
+			.layout()
+			.descriptor_set_layouts()
+			.get(0)
+			.unwrap();
 		let set = PersistentDescriptorSet::new(
 			layout.clone(),
 			[WriteDescriptorSet::buffer(0, uniform_buffer)],
@@ -266,7 +272,7 @@ impl Renderer {
 				PipelineBindPoint::Graphics,
 				self.pipeline.layout().clone(),
 				0,
-				set.clone(),
+				set,
 			)
 			.bind_vertex_buffers(0, vertex_buffer.clone())
 			.draw(vertex_buffer.len() as u32, 1, 0, 0)

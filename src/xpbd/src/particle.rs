@@ -30,12 +30,21 @@ impl Particle {
 		self.id
 	}
 
+	pub fn set_id(&mut self, id: usize) {
+		self.id = id;
+	}
+
 	pub fn get_pos(&self) -> V2 {
 		self.pos
 	}
 
 	pub fn add_pos(&mut self, dp: V2) {
 		self.pos += dp
+	}
+
+	pub fn offset_pos(&mut self, dp: V2) {
+		self.pos += dp;
+		self.ppos += dp;
 	}
 
 	pub fn get_imass(&self) -> f32 {
