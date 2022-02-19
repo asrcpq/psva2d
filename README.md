@@ -1,10 +1,10 @@
 # Todo:
 
+* ground
+
 * camera
 
-* texture
-
-* material & render
+* material & render & texture
 
 * show fps(status bar)
 
