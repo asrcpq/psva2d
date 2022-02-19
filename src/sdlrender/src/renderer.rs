@@ -3,13 +3,12 @@ use sdl2::pixels::Color;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 
-use crate::viewport::Viewport;
-use crate::V2;
 use protocol::pr_model::PrModel;
+use protocol::view::View;
 
 pub struct Renderer {
 	canvas: Canvas<Window>,
-	vp: Viewport,
+	vp: View,
 }
 
 impl Renderer {
@@ -19,15 +18,16 @@ impl Renderer {
 		canvas.present();
 		Self {
 			canvas,
-			vp: Viewport::default(),
+			vp: View::default()
+				.with_screen_center([800., 500.])
+				.with_scaler0([100., -100.]),
 		}
 	}
 }
 
 impl Renderer {
 	fn map_pos(&self, pos: [f32; 2]) -> [i32; 2] {
-		let p = V2::new(pos[0], pos[1]);
-		let cast = self.vp.w2s(p);
+		let cast = self.vp.w2s(pos);
 		[cast[0] as i32, cast[1] as i32]
 	}
 
