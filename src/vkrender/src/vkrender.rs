@@ -41,7 +41,7 @@ fn winit_size(size: [u32; 2]) -> Size {
 	Size::new(LogicalSize::new(size[0], size[1]))
 }
 
-pub struct Renderer {
+pub struct VkRender {
 	pub recreate_swapchain: bool,
 
 	device: Arc<Device>,
@@ -56,7 +56,7 @@ pub struct Renderer {
 	render_pass: Arc<RenderPass>,
 }
 
-impl Renderer {
+impl VkRender {
 	pub fn new(
 		el: &EventLoopWindowTarget<protocol::pr_model::PrModel>,
 		window_size: [u32; 2],

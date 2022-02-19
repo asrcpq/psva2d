@@ -1,0 +1,11 @@
+[package]
+name = "viewer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+winit = "^0.26"
+protocol = {path = "../protocol"}
+vkrender = {path = "../vkrender"}
+material = {path = "../material"}
+xpbd = {path = "../xpbd"}
