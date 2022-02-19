@@ -16,7 +16,7 @@ impl Default for View {
 		Self {
 			world_center: [0., 0.],
 			screen_center: [0., 0.],
-			scaler: scaler0.clone(),
+			scaler: scaler0,
 			sscaler: 1.0,
 			scaler0,
 
@@ -32,19 +32,22 @@ impl View {
 	}
 
 	pub fn with_scaler0(mut self, scaler0: [f32; 2]) -> Self {
-		self.scaler0 = scaler0.clone();
+		self.scaler0 = scaler0;
 		self.sscaler = 1.0;
 		self.scaler = scaler0;
 		self
 	}
 
-	pub fn move_view(&mut self, direction: u8) { // lurd
+	pub fn move_view(&mut self, direction: u8) {
+		// lurd
 		match direction {
 			0 => self.world_center[0] -= self.move_distance,
 			1 => self.world_center[1] += self.move_distance,
 			2 => self.world_center[0] += self.move_distance,
 			3 => self.world_center[1] -= self.move_distance,
-			_ => { eprintln!("ERROR: wrong direction {}", direction) }
+			_ => {
+				eprintln!("ERROR: wrong direction {}", direction)
+			}
 		}
 	}
 
@@ -60,15 +63,19 @@ impl View {
 
 	pub fn w2s(&self, p: [f32; 2]) -> [f32; 2] {
 		[
-			(p[0] - self.world_center[0]) * self.scaler[0] + self.screen_center[0],
-			(p[1] - self.world_center[1]) * self.scaler[1] + self.screen_center[1],
+			(p[0] - self.world_center[0]) * self.scaler[0]
+				+ self.screen_center[0],
+			(p[1] - self.world_center[1]) * self.scaler[1]
+				+ self.screen_center[1],
 		]
 	}
 
 	pub fn s2w(&self, p: [f32; 2]) -> [f32; 2] {
 		[
-			(p[0] - self.screen_center[0]) / self.scaler[0] + self.world_center[0],
-			(p[1] - self.screen_center[1]) / self.scaler[1] + self.world_center[1],
+			(p[0] - self.screen_center[0]) / self.scaler[0]
+				+ self.world_center[0],
+			(p[1] - self.screen_center[1]) / self.scaler[1]
+				+ self.world_center[1],
 		]
 	}
 

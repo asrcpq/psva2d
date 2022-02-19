@@ -153,8 +153,7 @@ impl Renderer {
 			.vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
 			.vertex_shader(vs.entry_point("main").unwrap(), ())
 			.input_assembly_state(
-				InputAssemblyState::new()
-					.topology(PrimitiveTopology::LineList),
+				InputAssemblyState::new().topology(PrimitiveTopology::LineList),
 			)
 			.viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
 			.fragment_shader(fs.entry_point("main").unwrap(), ())
@@ -194,18 +193,18 @@ impl Renderer {
 			self.device.clone(),
 			BufferUsage::all(),
 			false,
-			pr_model.constraints
+			pr_model
+				.constraints
 				.iter()
 				.filter(|x| x.particles.len() == 2)
-				.map(|x| x.particles
-					.iter()
-					.map(|x| Vertex {
-						pos: pr_model.particles.get(x).unwrap().pos
+				.map(|x| {
+					x.particles.iter().map(|x| Vertex {
+						pos: pr_model.particles.get(x).unwrap().pos,
 					})
-				)
+				})
 				.flatten()
 				.collect::<Vec<Vertex>>()
-				.into_iter()
+				.into_iter(),
 		)
 		.unwrap();
 
