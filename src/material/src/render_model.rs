@@ -17,7 +17,9 @@ impl RenderModel {
 		let mut faces = Vec::new();
 		for constraint in pr_model.constraints.iter() {
 			if constraint.particles.len() == 3 {
-				let face = Face { vid: constraint.particles.clone().try_into().unwrap() };
+				let face = Face {
+					vid: constraint.particles.clone().try_into().unwrap(),
+				};
 				faces.push(face);
 			}
 		}

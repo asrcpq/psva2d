@@ -2,11 +2,12 @@ use std::collections::HashMap;
 
 use crate::constraint::distance::DistanceConstraint;
 use crate::constraint::Constraint;
-use crate::particle::{PRef, Particle};
+use crate::particle::PRef;
 use crate::{C2, V2};
 use protocol::pr_model::PrParticle;
 
 pub struct ParticleGroup {
+	// Note: compress function? but maybe not necessary
 	id_alloc: usize,
 	csize: f32, // = 2 x radius
 	offset: V2,
@@ -45,6 +46,7 @@ impl ParticleGroup {
 		}
 	}
 
+	#[allow(clippy::needless_range_loop)]
 	fn collcon_of_2_pvecs(
 		&self,
 		pv1: &[PRef],
@@ -129,13 +131,16 @@ impl ParticleGroup {
 		)
 	}
 
-	pub fn add_particle(&mut self, mass: f32, pos: V2, accel: V2) -> PRef {
-		let p = Particle::new_ref(self.id_alloc, mass, pos, accel);
+	pub fn add_pref(&mut self, p: PRef) {
+		let pos = {
+			let mut p = p.try_lock().unwrap();
+			p.set_id(self.id_alloc);
+			p.get_pos()
+		};
 		assert!(self.data.insert(self.id_alloc, p.clone()).is_none());
 		let cpos = self.get_cpos(pos);
 		let e = self.shp.entry(cpos).or_insert_with(Vec::new);
-		(*e).push(p.clone());
+		(*e).push(p);
 		self.id_alloc += 1;
-		p
 	}
 }

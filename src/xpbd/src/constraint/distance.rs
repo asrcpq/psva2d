@@ -4,7 +4,7 @@ use crate::particle::PRef;
 use crate::V2;
 use protocol::pr_model::PrConstraint;
 
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum DistanceConstraintType {
 	Normal,
 	Repulsive, // collision
@@ -12,6 +12,7 @@ enum DistanceConstraintType {
 }
 type DCTy = DistanceConstraintType;
 
+#[derive(Clone)]
 pub struct DistanceConstraint {
 	ps: ParticleList,
 	l0: f32,
