@@ -15,9 +15,9 @@ fn main() {
 	let _ = std::thread::spawn(move || {
 		let (tx, rx) = channel();
 		let _ = std::thread::spawn(move || {
-			let mut world = xpbd::world::World::default();
-			world.init_test();
-			world.run_thread(tx);
+			let mut pworld = xpbd::pworld::PWorld::default();
+			pworld.init_test();
+			pworld.run_thread(tx);
 		});
 		while let Ok(pr_model) = rx.recv() {
 			elp.send_event(pr_model).unwrap();

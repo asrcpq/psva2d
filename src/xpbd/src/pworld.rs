@@ -9,7 +9,7 @@ use crate::V2;
 use protocol::pr_model::PrConstraint;
 use protocol::pr_model::PrModel;
 
-pub struct World {
+pub struct PWorld {
 	pub dt: f32,
 	pub ppr: usize,
 	iteration: usize,
@@ -19,7 +19,7 @@ pub struct World {
 	tmp_constraints: Vec<Box<dyn Constraint>>,
 }
 
-impl Default for World {
+impl Default for PWorld {
 	fn default() -> Self {
 		let pg = ParticleGroup::default();
 		Self {
@@ -34,7 +34,7 @@ impl Default for World {
 	}
 }
 
-impl World {
+impl PWorld {
 	pub fn init_test(&mut self) {
 		self.pg = Default::default();
 		self.constraints = Default::default();

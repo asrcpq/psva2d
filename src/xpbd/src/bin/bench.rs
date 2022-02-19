@@ -1,9 +1,9 @@
 use std::time::SystemTime;
-use xpbd::world::World;
+use xpbd::pworld::PWorld;
 
 fn main() {
 	let start = SystemTime::now();
-	let mut world = World::default();
+	let mut world = PWorld::default();
 	world.init_test();
 	let rframes = 100;
 	for _ in 0..rframes {
