@@ -1,5 +1,5 @@
 use crate::constraint::Constraint;
-use crate::constraint::ParticleList;
+use crate::constraint::particle_list::ParticleList;
 use crate::particle::PRef;
 use crate::V2;
 use protocol::pr_model::PrConstraint;

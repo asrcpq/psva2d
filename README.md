@@ -1,10 +1,8 @@
 # Todo:
 
-* constraint id enum
+* line render
 
 * pause
-
-* world
 
 * solid model/background model(coordinate grid is a type of it)
 
@@ -15,6 +13,8 @@
 * plastic
 
 * break
+
+* user control
 
 * z
 
