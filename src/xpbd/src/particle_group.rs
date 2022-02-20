@@ -37,7 +37,7 @@ impl ParticleGroup {
 				let mut locked = pref.try_lock().unwrap();
 				locked.update(dt);
 				// sticky ground, just for debugging
-				if locked.pos[1] < 0. {
+				if locked.pos[1] > 0. {
 					// locked.pos[1] = -locked.pos[1];
 					// locked.ppos[1] = -locked.ppos[1];
 					locked.pos[1] = 0.;

@@ -276,7 +276,9 @@ impl VkRender {
 			.unwrap();
 		let set = PersistentDescriptorSet::new(
 			layout.clone(),
-			[WriteDescriptorSet::buffer(0, uniform_buffer)],
+			[
+				WriteDescriptorSet::buffer(0, uniform_buffer),
+			],
 		)
 		.unwrap();
 

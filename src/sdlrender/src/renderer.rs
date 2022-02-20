@@ -20,7 +20,7 @@ impl Renderer {
 			canvas,
 			vp: View::default()
 				.with_screen_center([800., 500.])
-				.with_scaler0([100., -100.]),
+				.with_scaler0([100., 100.]),
 		}
 	}
 }

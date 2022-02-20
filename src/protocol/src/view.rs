@@ -10,7 +10,7 @@ pub struct View {
 
 impl Default for View {
 	fn default() -> Self {
-		let scaler0 = [0.1, -0.16];
+		let scaler0 = [0.1, 0.16];
 		Self {
 			world_center: [0., 0.],
 			screen_center: [0., 0.],
@@ -40,9 +40,9 @@ impl View {
 		// lurd
 		match direction {
 			0 => self.world_center[0] -= self.move_distance,
-			1 => self.world_center[1] += self.move_distance,
+			1 => self.world_center[1] -= self.move_distance,
 			2 => self.world_center[0] += self.move_distance,
-			3 => self.world_center[1] -= self.move_distance,
+			3 => self.world_center[1] += self.move_distance,
 			_ => {
 				eprintln!("ERROR: wrong direction {}", direction)
 			}
