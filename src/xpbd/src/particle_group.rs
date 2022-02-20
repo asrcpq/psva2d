@@ -12,6 +12,7 @@ pub struct ParticleGroup {
 	csize: f32, // = 2 x radius
 	shp: HashMap<C2, Vec<PRef>>,
 	data: HashMap<usize, PRef>,
+	speed_limit_k: f32,
 }
 
 impl Default for ParticleGroup {
@@ -21,6 +22,8 @@ impl Default for ParticleGroup {
 			csize: 0.08,
 			shp: HashMap::new(),
 			data: HashMap::new(),
+			// particle cannot move more than k * csize in dt
+			speed_limit_k: 0.7,
 		}
 	}
 }
@@ -35,7 +38,7 @@ impl ParticleGroup {
 		for pref in old_shp.into_iter().map(|(_, p)| p).flatten() {
 			let pos = {
 				let mut locked = pref.try_lock().unwrap();
-				locked.update(dt);
+				locked.update(dt, self.speed_limit_k * self.csize);
 				// sticky ground, just for debugging
 				if locked.pos[1] > 0. {
 					// locked.pos[1] = -locked.pos[1];

@@ -13,3 +13,10 @@ pub mod fs {
 		path: "src/shader/frag.glsl"
 	}
 }
+
+pub mod fs_wf {
+	vulkano_shaders::shader! {
+		ty: "fragment",
+		path: "src/shader/frag_wf.glsl"
+	}
+}

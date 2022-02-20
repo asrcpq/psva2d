@@ -6,17 +6,24 @@ use vulkano::command_buffer::{
 use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::device::physical::{PhysicalDevice, PhysicalDeviceType};
 use vulkano::device::{Device, DeviceExtensions, Features, Queue};
-use vulkano::image::view::ImageView;
-use vulkano::image::{ImageAccess, ImageUsage, SwapchainImage};
+use vulkano::format::Format;
+use vulkano::image::view::{ImageView, ImageViewType};
+use vulkano::image::{
+	ImageAccess, ImageDimensions, ImageUsage, ImmutableImage, MipmapsCount,
+	SwapchainImage,
+};
 use vulkano::instance::Instance;
 use vulkano::pipeline::graphics::input_assembly::{
 	InputAssemblyState, PrimitiveTopology,
 };
-use vulkano::pipeline::graphics::rasterization::{PolygonMode, RasterizationState};
+use vulkano::pipeline::graphics::rasterization::{
+	PolygonMode, RasterizationState,
+};
 use vulkano::pipeline::graphics::vertex_input::BuffersDefinition;
 use vulkano::pipeline::graphics::viewport::{Viewport, ViewportState};
 use vulkano::pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint};
 use vulkano::render_pass::{Framebuffer, RenderPass, Subpass};
+use vulkano::sampler::Sampler;
 use vulkano::swapchain::{
 	self, AcquireError, Surface, Swapchain, SwapchainCreationError,
 };
@@ -29,14 +36,16 @@ use winit::window::{Window, WindowBuilder};
 
 use crate::camera::Camera;
 use crate::shader;
+use material::face::TextureData;
 use material::render_model::RenderModel;
 
 #[repr(C)]
 #[derive(Default, Debug, Clone)]
 struct Vertex {
 	pos: [f32; 2],
+	tex_coord: [f32; 2],
 }
-vulkano::impl_vertex!(Vertex, pos);
+vulkano::impl_vertex!(Vertex, pos, tex_coord);
 
 fn winit_size(size: [u32; 2]) -> Size {
 	Size::new(LogicalSize::new(size[0], size[1]))
@@ -62,6 +71,8 @@ pub struct VkRender {
 	pipeline: Arc<GraphicsPipeline>,
 	pipeline_wf: Arc<GraphicsPipeline>,
 	render_pass: Arc<RenderPass>,
+	texture_set: Arc<PersistentDescriptorSet>,
+	tex_coords: Vec<Vec<[f32; 2]>>,
 
 	render_mode: VkRenderMode,
 }
@@ -69,6 +80,7 @@ pub struct VkRender {
 impl VkRender {
 	pub fn new(
 		el: &EventLoopWindowTarget<protocol::pr_model::PrModel>,
+		textures: Vec<TextureData>,
 		window_size: [u32; 2],
 	) -> Self {
 		let required_extensions = vulkano_win::required_extensions();
@@ -116,7 +128,7 @@ impl VkRender {
 			physical_device,
 			&Features {
 				fill_mode_non_solid: true,
-				.. Features::none()
+				..Features::none()
 			},
 			&physical_device
 				.required_extensions()
@@ -147,6 +159,7 @@ impl VkRender {
 
 		let vs = shader::vs::load(device.clone()).unwrap();
 		let fs = shader::fs::load(device.clone()).unwrap();
+		let fs_wf = shader::fs_wf::load(device.clone()).unwrap();
 
 		let render_pass = vulkano::single_pass_renderpass!(
 			device.clone(),
@@ -165,6 +178,42 @@ impl VkRender {
 		)
 		.unwrap();
 
+		let tex_len = textures.len() as u32;
+		let (arrays, tex_coords): (Vec<Vec<u8>>, Vec<Vec<[f32; 2]>>) = textures
+			.into_iter()
+			.map(|t| {
+				(
+					t.image.as_raw().clone(),
+					t.tex_coords
+						.into_iter()
+						.map(|x| x.into())
+						.collect::<Vec<[f32; 2]>>(),
+				)
+			})
+			.unzip();
+		let (texture, tex_future) = {
+			let dimensions = ImageDimensions::Dim2d {
+				width: 1024,
+				height: 1024,
+				array_layers: tex_len,
+			};
+			#[allow(clippy::needless_collect)]
+			let arrays: Vec<u8> = arrays.into_iter().flat_map(|x| x.into_iter()).collect();
+			let (image, future) = ImmutableImage::from_iter(
+				arrays.into_iter(),
+				dimensions,
+				MipmapsCount::Log2,
+				Format::R8G8B8A8_SRGB,
+				queue.clone(),
+			)
+			.unwrap();
+			let image_view = ImageView::start(image)
+				.ty(ImageViewType::Dim2dArray)
+				.build()
+				.unwrap();
+			(image_view, future)
+		};
+
 		let pipeline = GraphicsPipeline::start()
 			.vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
 			.vertex_shader(vs.entry_point("main").unwrap(), ())
@@ -178,6 +227,14 @@ impl VkRender {
 			.build(device.clone())
 			.unwrap();
 
+		let sampler = Sampler::simple_repeat_linear(device.clone()).unwrap();
+		let layout = pipeline.layout().descriptor_set_layouts().get(1).unwrap();
+		let texture_set = PersistentDescriptorSet::new(
+			layout.clone(),
+			[WriteDescriptorSet::image_view_sampler(0, texture, sampler)],
+		)
+		.unwrap();
+
 		let pipeline_wf = GraphicsPipeline::start()
 			.vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
 			.vertex_shader(vs.entry_point("main").unwrap(), ())
@@ -186,10 +243,10 @@ impl VkRender {
 					.topology(PrimitiveTopology::TriangleList),
 			)
 			.viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
-			.rasterization_state(RasterizationState::new()
-				.polygon_mode(PolygonMode::Line)
+			.rasterization_state(
+				RasterizationState::new().polygon_mode(PolygonMode::Line),
 			)
-			.fragment_shader(fs.entry_point("main").unwrap(), ())
+			.fragment_shader(fs_wf.entry_point("main").unwrap(), ())
 			.render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
 			.build(device.clone())
 			.unwrap();
@@ -205,7 +262,7 @@ impl VkRender {
 			&images,
 			&mut viewport,
 		);
-		let previous_frame_end = Some(sync::now(device.clone()).boxed());
+		let previous_frame_end = Some(tex_future.boxed());
 
 		Self {
 			device,
@@ -219,6 +276,8 @@ impl VkRender {
 			pipeline,
 			pipeline_wf,
 			render_pass,
+			texture_set,
+			tex_coords,
 
 			render_mode: VkRenderMode::Normal,
 		}
@@ -241,24 +300,31 @@ impl VkRender {
 	}
 
 	pub fn render(&mut self, render_model: RenderModel, camera: Camera) {
-		let vertex_buffer = CpuAccessibleBuffer::from_iter(
-			self.device.clone(),
-			BufferUsage::all(),
-			false,
-			render_model.face_groups
-				.values()
-				.map(|fg| fg.faces.iter())
-				.flatten()
-				.map(|x| {
-					x.vid.iter().map(|x| Vertex {
-						pos: *render_model.vs.get(x).unwrap(),
+		let mut vertex_buffers = vec![];
+		for (id, face_group) in render_model.face_groups {
+			if id < 0 || id >= self.tex_coords.len() as i32 {
+				continue;
+			}
+			let vertex_buffer = CpuAccessibleBuffer::from_iter(
+				self.device.clone(),
+				BufferUsage::all(),
+				false,
+				face_group
+					.faces
+					.iter()
+					.map(|x| {
+						(0..3).map(|i| Vertex {
+							pos: *render_model.vs.get(&x.vid[i]).unwrap(),
+							tex_coord: self.tex_coords[id as usize][x.uvid[i]],
+						})
 					})
-				})
-				.flatten()
-				.collect::<Vec<Vertex>>()
-				.into_iter(),
-		)
-		.unwrap();
+					.flatten()
+					.collect::<Vec<Vertex>>()
+					.into_iter(),
+			)
+			.unwrap();
+			vertex_buffers.push((id, vertex_buffer));
+		}
 
 		let uniform_buffer = CpuAccessibleBuffer::from_data(
 			self.device.clone(),
@@ -269,16 +335,10 @@ impl VkRender {
 		.unwrap();
 
 		let pipeline = self.get_pipeline();
-		let layout = pipeline
-			.layout()
-			.descriptor_set_layouts()
-			.get(0)
-			.unwrap();
+		let layout = pipeline.layout().descriptor_set_layouts().get(0).unwrap();
 		let set = PersistentDescriptorSet::new(
 			layout.clone(),
-			[
-				WriteDescriptorSet::buffer(0, uniform_buffer),
-			],
+			[WriteDescriptorSet::buffer(0, uniform_buffer)],
 		)
 		.unwrap();
 
@@ -318,18 +378,44 @@ impl VkRender {
 			)
 			.unwrap()
 			.set_viewport(0, [self.viewport.clone()])
-			.bind_pipeline_graphics(pipeline.clone())
-			.bind_descriptor_sets(
+			.bind_pipeline_graphics(pipeline.clone());
+
+		if self.render_mode == VkRenderMode::Normal {
+			builder.bind_descriptor_sets(
+				PipelineBindPoint::Graphics,
+				pipeline.layout().clone(),
+				0,
+				vec![set, self.texture_set.clone()],
+			);
+			for (id, vertex_buffer) in vertex_buffers.into_iter() {
+				let push_constants =
+					shader::fs::ty::PushConstants { layer: id };
+				builder.push_constants(
+					pipeline.layout().clone(),
+					0,
+					push_constants,
+				);
+				builder
+					.bind_vertex_buffers(0, vertex_buffer.clone())
+					.draw(vertex_buffer.len() as u32, 1, 0, 0)
+					.unwrap();
+			}
+		} else {
+			builder.bind_descriptor_sets(
 				PipelineBindPoint::Graphics,
 				pipeline.layout().clone(),
 				0,
 				set,
-			)
-			.bind_vertex_buffers(0, vertex_buffer.clone())
-			.draw(vertex_buffer.len() as u32, 1, 0, 0)
-			.unwrap()
-			.end_render_pass()
-			.unwrap();
+			);
+			for (_, vertex_buffer) in vertex_buffers.into_iter() {
+				builder
+					.bind_vertex_buffers(0, vertex_buffer.clone())
+					.draw(vertex_buffer.len() as u32, 1, 0, 0)
+					.unwrap();
+			}
+		}
+
+		builder.end_render_pass().unwrap();
 
 		// Finish building the command buffer by calling `build`.
 		let command_buffer = builder.build().unwrap();
