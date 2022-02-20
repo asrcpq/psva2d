@@ -1,4 +1,4 @@
-use crate::face::{Face, FaceGroup};
+use crate::face::FaceGroup;
 
 use std::collections::HashMap;
 

@@ -1,7 +1,7 @@
-mod constraint;
-mod particle;
+pub mod constraint;
+pub mod particle;
 mod particle_group;
-mod physical_model;
+pub mod physical_model;
 pub mod pworld;
 
 pub type V2 = nalgebra::Vector2<f32>;

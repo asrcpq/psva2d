@@ -1,28 +1,36 @@
+use xpbd::V2;
+use xpbd::physical_model::PhysicalModel;
+use xpbd::particle::{Particle, PRef};
+use xpbd::constraint::distance::DistanceConstraint;
+use xpbd::constraint::volume::VolumeConstraint;
+
+#[derive(Clone)]
 struct Cell {
 	pub uvid: usize,
 	pub pref: PRef,
 }
 
 pub struct ImageModelBuilder {
-	len: [usize; 2],
-	grid_size: [usize; 2],
+	len: [isize; 2],
+	grid_size: [isize; 2],
 	csize: f32,
 	image: image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-	cells: [[Option<ImageModelBuilderCell>; 64]; 64]
+	cells: Vec<Vec<Option<Cell>>>,
 	id_alloc: usize,
 }
 
 impl ImageModelBuilder {
-	pub fn load_image(&mut image_path: &str) -> Self {
+	pub fn load_image(image_path: &str) -> Self {
 		let image = image::open(image_path).unwrap().into_rgba8();
+		let len = [64, 64];
 		assert_eq!(image.width(), 1024);
 		assert_eq!(image.height(), 1024);
 		Self {
-			len: [64, 64],
-			grid_size: [16, 16],
+			len,
+			grid_size: [1024 / len[0], 1024 / len[1]],
 			csize: 0.1,
 			image,
-			cells: Default::default(),
+			cells: vec![vec![None; len[1] as usize]; len[0] as usize],
 			id_alloc: 0,
 		}
 	}
@@ -30,17 +38,17 @@ impl ImageModelBuilder {
 	pub fn compute_cells(&mut self) {
 		for idx in 0..self.len[0] {
 			for idy in 0..self.len[1] {
-				let color = image.get_pixel(
-					idx * self.grid_size[0],
-					idy * self.grid_size[1],
+				let color = self.image.get_pixel(
+					(idx * self.grid_size[0]) as u32,
+					(idy * self.grid_size[1]) as u32,
 				);
 				if color[3] == 0 { continue }
 				let mass = 1.0;
-				let pos = V2::new(size * idx as f32, size * idy as f32);
+				let pos = V2::new(self.csize * idx as f32, self.csize * idy as f32);
 				let accel = V2::new(0., -9.8);
 				let p = Particle::new_ref(self.id_alloc, mass, pos, accel);
-				self.cells[idx][idy] = Some(Cell {
-					uvid: id_alloc,
+				self.cells[idx as usize][idy as usize] = Some(Cell {
+					uvid: self.id_alloc,
 					pref: p,
 				});
 				self.id_alloc += 1;
@@ -62,7 +70,7 @@ impl ImageModelBuilder {
 					if y < 0 || y >= self.len[0] {
 						continue 'cell_loop
 					}
-					if let Some(cell) = self.cells[x as usize][y as usize] {
+					if let Some(cell) = &self.cells[x as usize][y as usize] {
 						pvec_tmp.push(cell.pref.clone());
 					} else {
 						continue 'cell_loop
@@ -75,19 +83,19 @@ impl ImageModelBuilder {
 	}
 
 	pub fn build_physical_model(&self) -> PhysicalModel {
-		let mut particles = vec![];
+		let mut particles: Vec<PRef> = vec![];
 		let mut constraints = vec![];
 		self.get_particles(vec![[0, 0]])
 			.into_iter()
-			.for_each(|v| particles.push(v));
+			.for_each(|v| particles.push(v[0].clone()));
 		let mut pairs = vec![];
-		pairs.append(self.get_particles(vec![[0, 0], [-1, 0]]));
-		pairs.append(self.get_particles(vec![[0, 0], [0, -1]]));
-		pairs.append(self.get_particles(vec![[0, 0], [-1, -1]]));
-		pairs.append(self.get_particles(vec![[0, -1], [-1, 0]]));
+		pairs.extend(self.get_particles(vec![[0, 0], [-1, 0]]));
+		pairs.extend(self.get_particles(vec![[0, 0], [0, -1]]));
+		pairs.extend(self.get_particles(vec![[0, 0], [-1, -1]]));
+		pairs.extend(self.get_particles(vec![[0, -1], [-1, 0]]));
 		pairs.into_iter()
 			.for_each(|v| {
-				let dc = DistanceConstraint::new(v[0], v[1])
+				let dc = DistanceConstraint::new(v[0].clone(), v[1].clone())
 					.attractive_only()
 					.with_compliance(1e-7)
 					.build();
@@ -95,11 +103,11 @@ impl ImageModelBuilder {
 			});
 
 		let mut pairs = vec![];
-		pairs.append(self.get_particles(vec![[0, 0], [-1, 0], [-1, -1]]));
-		pairs.append(self.get_particles(vec![[0, 0], [0, -1], [-1, -1]]));
+		pairs.extend(self.get_particles(vec![[0, 0], [-1, 0], [-1, -1]]));
+		pairs.extend(self.get_particles(vec![[0, 0], [0, -1], [-1, -1]]));
 		pairs.into_iter()
 			.for_each(|v| {
-				let vc = VolumeConstraint::new(v[0], v[1], v[2])
+				let vc = VolumeConstraint::new(vec![v[0].clone(), v[1].clone(), v[2].clone()])
 					.with_id(0)
 					.with_compliance(1e-10)
 					.build();

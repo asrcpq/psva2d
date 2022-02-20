@@ -7,3 +7,4 @@ edition = "2021"
 nalgebra = "^0.30"
 image = "0.24"
 protocol = {path = "../protocol" }
+xpbd = {path = "../xpbd" }
