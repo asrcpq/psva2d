@@ -1,5 +1,6 @@
 mod face;
 pub mod render_model;
 pub mod texture_indexer;
+pub mod image_model;
 
-type V2 = nalgebra::Vector2<f32>;
+use xpbd::V2;
