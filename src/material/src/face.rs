@@ -5,6 +5,7 @@ pub struct Face {
 	pub uvid: [usize; 3],
 }
 
+#[derive(Default)]
 pub struct FaceGroup {
 	pub faces: Vec<Face>,
 }

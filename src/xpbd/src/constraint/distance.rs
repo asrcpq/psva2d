@@ -1,5 +1,5 @@
 use crate::constraint::Constraint;
-use crate::constraint::ParticleList;
+use crate::constraint::particle_list::ParticleList;
 use crate::particle::PRef;
 use crate::V2;
 use protocol::pr_model::PrConstraint;
@@ -77,7 +77,7 @@ impl DistanceConstraint {
 impl Constraint for DistanceConstraint {
 	fn render(&self) -> PrConstraint {
 		PrConstraint {
-			id: 0,
+			id: self.id,
 			particles: self.ps.ids(),
 		}
 	}

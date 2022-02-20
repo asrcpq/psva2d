@@ -49,6 +49,7 @@ fn main() {
 				Vkc::J => view.move_view(3),
 				Vkc::I => view.scale_view(true),
 				Vkc::O => view.scale_view(false),
+				Vkc::R => vkr.toggle_render_mode(),
 				_ => {}
 			},
 			_ => {}

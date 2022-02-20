@@ -12,6 +12,7 @@ use vulkano::instance::Instance;
 use vulkano::pipeline::graphics::input_assembly::{
 	InputAssemblyState, PrimitiveTopology,
 };
+use vulkano::pipeline::graphics::rasterization::{PolygonMode, RasterizationState};
 use vulkano::pipeline::graphics::vertex_input::BuffersDefinition;
 use vulkano::pipeline::graphics::viewport::{Viewport, ViewportState};
 use vulkano::pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint};
@@ -41,6 +42,12 @@ fn winit_size(size: [u32; 2]) -> Size {
 	Size::new(LogicalSize::new(size[0], size[1]))
 }
 
+#[derive(PartialEq)]
+pub enum VkRenderMode {
+	Normal,
+	Wireframe,
+}
+
 pub struct VkRender {
 	pub recreate_swapchain: bool,
 
@@ -53,7 +60,10 @@ pub struct VkRender {
 	//vertex_buffer: Arc<CpuAccessibleBuffer<[Vertex]>>,
 	previous_frame_end: Option<Box<dyn GpuFuture>>,
 	pipeline: Arc<GraphicsPipeline>,
+	pipeline_wf: Arc<GraphicsPipeline>,
 	render_pass: Arc<RenderPass>,
+
+	render_mode: VkRenderMode,
 }
 
 impl VkRender {
@@ -104,7 +114,10 @@ impl VkRender {
 
 		let (device, mut queues) = Device::new(
 			physical_device,
-			&Features::none(),
+			&Features {
+				fill_mode_non_solid: true,
+				.. Features::none()
+			},
 			&physical_device
 				.required_extensions()
 				.union(&device_extensions),
@@ -165,6 +178,22 @@ impl VkRender {
 			.build(device.clone())
 			.unwrap();
 
+		let pipeline_wf = GraphicsPipeline::start()
+			.vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
+			.vertex_shader(vs.entry_point("main").unwrap(), ())
+			.input_assembly_state(
+				InputAssemblyState::new()
+					.topology(PrimitiveTopology::TriangleList),
+			)
+			.viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
+			.rasterization_state(RasterizationState::new()
+				.polygon_mode(PolygonMode::Line)
+			)
+			.fragment_shader(fs.entry_point("main").unwrap(), ())
+			.render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
+			.build(device.clone())
+			.unwrap();
+
 		let mut viewport = Viewport {
 			origin: [0.0, 0.0],
 			dimensions: [0.0, 0.0],
@@ -188,7 +217,26 @@ impl VkRender {
 			viewport,
 			previous_frame_end,
 			pipeline,
+			pipeline_wf,
 			render_pass,
+
+			render_mode: VkRenderMode::Normal,
+		}
+	}
+
+	pub fn toggle_render_mode(&mut self) {
+		if self.render_mode == VkRenderMode::Normal {
+			self.render_mode = VkRenderMode::Wireframe;
+		} else {
+			self.render_mode = VkRenderMode::Normal;
+		}
+	}
+
+	pub fn get_pipeline(&self) -> Arc<GraphicsPipeline> {
+		if self.render_mode == VkRenderMode::Normal {
+			self.pipeline.clone()
+		} else {
+			self.pipeline_wf.clone()
 		}
 	}
 
@@ -197,9 +245,10 @@ impl VkRender {
 			self.device.clone(),
 			BufferUsage::all(),
 			false,
-			render_model.face_groups[0]
-				.faces
-				.iter()
+			render_model.face_groups
+				.values()
+				.map(|fg| fg.faces.iter())
+				.flatten()
 				.map(|x| {
 					x.vid.iter().map(|x| Vertex {
 						pos: *render_model.vs.get(x).unwrap(),
@@ -219,8 +268,8 @@ impl VkRender {
 		)
 		.unwrap();
 
-		let layout = self
-			.pipeline
+		let pipeline = self.get_pipeline();
+		let layout = pipeline
 			.layout()
 			.descriptor_set_layouts()
 			.get(0)
@@ -267,10 +316,10 @@ impl VkRender {
 			)
 			.unwrap()
 			.set_viewport(0, [self.viewport.clone()])
-			.bind_pipeline_graphics(self.pipeline.clone())
+			.bind_pipeline_graphics(pipeline.clone())
 			.bind_descriptor_sets(
 				PipelineBindPoint::Graphics,
-				self.pipeline.layout().clone(),
+				pipeline.layout().clone(),
 				0,
 				set,
 			)

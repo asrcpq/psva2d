@@ -1,6 +1,8 @@
 pub mod distance;
 pub mod volume;
 
+mod particle_list;
+
 use crate::particle::PRef;
 use protocol::pr_model::PrConstraint;
 
@@ -11,43 +13,3 @@ pub trait Constraint: dyn_clone::DynClone + Send {
 }
 
 dyn_clone::clone_trait_object!(Constraint);
-
-#[derive(Clone)]
-pub struct ParticleList {
-	particles: Vec<PRef>,
-}
-
-impl ParticleList {
-	pub fn new(particles: Vec<PRef>) -> Self {
-		let mut zipped: Vec<_> = particles
-			.into_iter()
-			.map(|x| {
-				(
-					{
-						let id = x.try_lock().unwrap().get_id();
-						id
-					},
-					x,
-				)
-			})
-			.collect();
-		zipped.sort_by_key(|x| x.0);
-		Self {
-			particles: zipped.into_iter().map(|(_, p)| p).collect(),
-		}
-	}
-
-	pub fn ids(&self) -> Vec<usize> {
-		self.particles
-			.iter()
-			.map(|x| x.try_lock().unwrap().get_id())
-			.collect()
-	}
-}
-
-impl std::ops::Index<usize> for ParticleList {
-	type Output = PRef;
-	fn index(&self, idx: usize) -> &Self::Output {
-		&self.particles[idx]
-	}
-}
