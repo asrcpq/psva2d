@@ -1,5 +1,4 @@
 use crate::face::{Face, FaceGroup};
-use protocol::pr_model::PrModel;
 
 use std::collections::HashMap;
 

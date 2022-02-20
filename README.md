@@ -1,5 +1,9 @@
 # Todo:
 
+* constraint id enum
+
+* pause
+
 * world
 
 * solid model/background model(coordinate grid is a type of it)

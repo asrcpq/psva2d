@@ -11,6 +11,7 @@ use protocol::pr_model::PrModel;
 pub struct PWorld {
 	pub dt: f32,
 	pub ppr: usize,
+	pub time_scale: f32,
 	iteration: usize,
 
 	pg: ParticleGroup,
@@ -24,6 +25,7 @@ impl Default for PWorld {
 		Self {
 			dt: 0.005,
 			ppr: 4,
+			time_scale: 1.0,
 			iteration: 20,
 
 			pg,
@@ -34,14 +36,31 @@ impl Default for PWorld {
 }
 
 impl PWorld {
+	pub fn with_time_scale(mut self, time_scale: f32) -> Self {
+		self.time_scale = time_scale;
+		self
+	}
+
+	pub fn with_dt(mut self, dt: f32) -> Self {
+		self.dt = dt;
+		self
+	}
+
+	pub fn with_ppr(mut self, ppr: usize) -> Self {
+		self.ppr = ppr;
+		self
+	}
+
 	pub fn init_test(&mut self) {
 		self.pg = Default::default();
 		self.constraints = Default::default();
-		for m in 0..3 {
+		for m in 0..2 {
 			for n in 0..3 {
-				let x = -5.0 + 2.0 * m as f32;
-				let y = 0.5 + 1.0 * n as f32 + 0.5 * (m % 2) as f32;
+				let x = -5.0 + 0.2 * n as f32 + 2.0 * m as f32;
+				let y = 0.2 + 1.0 * n as f32 + 0.2 * (m % 2) as f32;
 				let pmodel = PhysicalModel::new_block(
+					// if n == 0 { f32::INFINITY } else {1.0},
+					1.0,
 					25,
 					3,
 					self.pg.csize(),
@@ -112,7 +131,7 @@ impl PWorld {
 
 	pub fn run_thread(&mut self, tx: Sender<PrModel>) {
 		let mut start_time = SystemTime::now();
-		let rtime: u64 = (self.dt * 1e6 * self.ppr as f32) as u64;
+		let rtime: u64 = (self.dt * 1e6 * self.ppr as f32 * self.time_scale) as u64;
 		loop {
 			self.run();
 			let model = self.pr_model();

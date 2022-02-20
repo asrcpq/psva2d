@@ -10,7 +10,6 @@ pub struct ParticleGroup {
 	// Note: compress function? but maybe not necessary
 	id_alloc: usize,
 	csize: f32, // = 2 x radius
-	offset: V2,
 	shp: HashMap<C2, Vec<PRef>>,
 	data: HashMap<usize, PRef>,
 }
@@ -20,7 +19,6 @@ impl Default for ParticleGroup {
 		Self {
 			id_alloc: 0,
 			csize: 0.08,
-			offset: V2::new(0., 0.),
 			shp: HashMap::new(),
 			data: HashMap::new(),
 		}
@@ -36,9 +34,17 @@ impl ParticleGroup {
 		let old_shp = std::mem::take(&mut self.shp);
 		for pref in old_shp.into_iter().map(|(_, p)| p).flatten() {
 			let pos = {
-				let mut prev_lock = pref.try_lock().unwrap();
-				prev_lock.update(dt);
-				prev_lock.get_pos()
+				let mut locked = pref.try_lock().unwrap();
+				locked.update(dt);
+				// sticky ground, just for debugging
+				if locked.pos[1] < 0. {
+					// locked.pos[1] = -locked.pos[1];
+					// locked.ppos[1] = -locked.ppos[1];
+					locked.pos[1] = 0.;
+					locked.ppos[1] = 0.;
+					locked.ppos[0] = locked.pos[0];
+				}
+				locked.pos
 			};
 			let cpos = self.get_cpos(pos);
 			let e = self.shp.entry(cpos).or_insert_with(Vec::new);
@@ -61,11 +67,10 @@ impl ParticleGroup {
 						if pp1.get_id() >= pp2.get_id() {
 							continue;
 						}
+						let dl = (pp1.get_pos() - pp2.get_pos()).magnitude();
 						// Note: is it enough or we should make is looser?
 						// during iteration more collisions could happen
-						if (pp1.get_pos() - pp2.get_pos()).magnitude()
-							> self.csize
-						{
+						if dl > self.csize {
 							continue;
 						}
 					} else {
@@ -77,6 +82,7 @@ impl ParticleGroup {
 					p2.clone(),
 					self.csize,
 				)
+				.with_id(1)
 				.repulsive_only()
 				.build();
 				result.push(collcon);
@@ -96,8 +102,12 @@ impl ParticleGroup {
 				continue;
 			}
 			for dcell in vec![
+				C2::new(-1, -1),
+				C2::new(-1, 0),
+				C2::new(-1, 1),
+				C2::new(0, -1),
 				C2::new(0, 0),
-				C2::new(1, 0),
+				C2::new(0, 1),
 				C2::new(1, -1),
 				C2::new(1, 0),
 				C2::new(1, 1),
@@ -124,10 +134,9 @@ impl ParticleGroup {
 	}
 
 	fn get_cpos(&self, p: V2) -> C2 {
-		let dp = p - self.offset;
 		C2::new(
-			(dp[0] / self.csize).floor() as i32,
-			(dp[1] / self.csize).floor() as i32,
+			(p[0] / self.csize).floor() as i32,
+			(p[1] / self.csize).floor() as i32,
 		)
 	}
 
