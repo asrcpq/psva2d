@@ -57,7 +57,7 @@ impl PWorld {
 		for m in 0..2 {
 			for n in 0..3 {
 				let x = -5.0 + 0.2 * n as f32 + 2.0 * m as f32;
-				let y = 0.2 + 1.0 * n as f32 + 0.2 * (m % 2) as f32;
+				let y = -0.2 - 1.0 * n as f32 - 0.2 * (m % 2) as f32;
 				let pmodel = PhysicalModel::new_block(
 					// if n == 0 { f32::INFINITY } else {1.0},
 					1.0,
