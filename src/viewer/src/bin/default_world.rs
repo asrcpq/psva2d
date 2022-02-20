@@ -1,4 +1,5 @@
 fn main() {
-	let pworld = xpbd::pworld::PWorld::default();
+	let mut pworld = xpbd::pworld::PWorld::default();
+	pworld.init_test();
 	viewer::run(pworld);
 }
