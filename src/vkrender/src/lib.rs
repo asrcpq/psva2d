@@ -1,3 +1,3 @@
 pub mod camera;
-pub mod vkrender;
 mod shader;
+pub mod vkrender;

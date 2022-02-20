@@ -6,6 +6,8 @@
 
 * solid model/background model(coordinate grid is a type of it)
 
+* penetration problem
+
 * material & render & texture
 
 * show fps(status bar)

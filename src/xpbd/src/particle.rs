@@ -51,14 +51,18 @@ impl Particle {
 		self.imass
 	}
 
-	pub fn update(&mut self, t: f32) {
+	pub fn update(&mut self, t: f32, max_dp: f32) {
 		if self.imass == 0f32 {
 			return;
 		}
 		let ppos = self.pos;
-		// TODO: apply accel to ppos for stability
 		let dv = self.accel * t;
-		self.pos += self.pos - self.ppos + dv * t;
+		// NOTE: this does not work with dynamic t, should record last t and scale
+		let mut dp = self.pos - self.ppos + dv * t;
+		if dp.magnitude() > max_dp {
+			dp = dp.normalize() * max_dp;
+		}
+		self.pos += dp;
 		self.ppos = ppos;
 	}
 

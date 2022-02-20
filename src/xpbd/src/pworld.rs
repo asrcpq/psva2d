@@ -1,7 +1,8 @@
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{Receiver, Sender};
 use std::time::{Duration, SystemTime};
 
 use crate::constraint::Constraint;
+use crate::controller_message::ControllerMessage;
 use crate::particle_group::ParticleGroup;
 use crate::physical_model::PhysicalModel;
 use crate::V2;
@@ -14,6 +15,11 @@ pub struct PWorld {
 	pub time_scale: f32,
 	iteration: usize,
 
+	// -1: always play
+	// 0: pause
+	// n: play n frames
+	forward_frames: i32,
+
 	pg: ParticleGroup,
 	constraints: Vec<Box<dyn Constraint>>,
 	tmp_constraints: Vec<Box<dyn Constraint>>,
@@ -23,10 +29,11 @@ impl Default for PWorld {
 	fn default() -> Self {
 		let pg = ParticleGroup::default();
 		Self {
-			dt: 0.005,
-			ppr: 4,
+			dt: 0.002,
+			ppr: 10,
 			time_scale: 1.0,
-			iteration: 20,
+			iteration: 10,
+			forward_frames: -1,
 
 			pg,
 			constraints: Vec::new(),
@@ -43,6 +50,17 @@ impl PWorld {
 
 	pub fn with_dt(mut self, dt: f32) -> Self {
 		self.dt = dt;
+		self
+	}
+
+	pub fn with_paused(mut self) -> Self {
+		self.forward_frames = 1; // provide first frame
+		self
+	}
+
+	pub fn with_slow_down(mut self, k: f32) -> Self {
+		self.dt /= k;
+		self.time_scale *= k;
 		self
 	}
 
@@ -129,17 +147,41 @@ impl PWorld {
 		}
 	}
 
-	pub fn run_thread(&mut self, tx: Sender<PrModel>) {
+	pub fn run_thread(
+		&mut self,
+		tx: Sender<PrModel>,
+		rx: Receiver<ControllerMessage>,
+	) {
 		let mut start_time = SystemTime::now();
-		let rtime: u64 = (self.dt * 1e6 * self.ppr as f32 * self.time_scale) as u64;
+		let rtime: u64 =
+			(self.dt * 1e6 * self.ppr as f32 * self.time_scale) as u64;
 		loop {
-			self.run();
-			let model = self.pr_model();
-			tx.send(model).unwrap();
+			if self.forward_frames != 0 {
+				self.forward_frames -= 1;
+				self.run();
+				let model = self.pr_model();
+				tx.send(model).unwrap();
+			}
 
 			let next_time = SystemTime::now();
 			let dt = next_time.duration_since(start_time).unwrap().as_micros()
 				as u64;
+			while let Ok(msg) = rx.try_recv() {
+				match msg {
+					ControllerMessage::TogglePause => {
+						if self.forward_frames == 0 {
+							self.forward_frames = -1;
+						} else {
+							self.forward_frames = 0;
+						}
+					}
+					ControllerMessage::FrameForward => {
+						if self.forward_frames == 0 {
+							self.forward_frames += 1;
+						}
+					}
+				}
+			}
 			if dt < rtime {
 				std::thread::sleep(Duration::from_micros(rtime - dt));
 			}

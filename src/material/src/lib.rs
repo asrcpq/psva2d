@@ -1,6 +1,6 @@
-mod face;
+pub mod face;
+pub mod image_model;
 pub mod render_model;
 pub mod texture_indexer;
-pub mod image_model;
 
 use xpbd::V2;
