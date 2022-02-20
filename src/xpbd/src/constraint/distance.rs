@@ -14,6 +14,7 @@ type DCTy = DistanceConstraintType;
 
 #[derive(Clone)]
 pub struct DistanceConstraint {
+	id: usize,
 	ps: ParticleList,
 	l0: f32,
 	lambda: f32,
@@ -27,6 +28,7 @@ impl DistanceConstraint {
 		let pos1 = ps[0].lock().unwrap().get_pos();
 		let pos2 = ps[1].lock().unwrap().get_pos();
 		Self {
+			id: 0,
 			ps,
 			l0: (pos1 - pos2).magnitude(),
 			lambda: 0f32,
@@ -35,9 +37,15 @@ impl DistanceConstraint {
 		}
 	}
 
+	pub fn with_id(mut self, id: usize) -> Self {
+		self.id = id;
+		self
+	}
+
 	pub fn new_with_l0(p1: PRef, p2: PRef, l0: f32) -> Self {
 		let ps = ParticleList::new(vec![p1, p2]);
 		Self {
+			id: 0,
 			ps,
 			l0,
 			lambda: 0f32,
@@ -94,8 +102,8 @@ impl Constraint for DistanceConstraint {
 			dp = V2::new(0.0, 1.0);
 		}
 		let dl = l - self.l0;
-		if self.ty == DCTy::Repulsive && dl > 0.
-			|| self.ty == DCTy::Attractive && dl < 0.
+		if self.ty == DCTy::Repulsive && dl >= 0.
+			|| self.ty == DCTy::Attractive && dl <= 0.
 		{
 			return;
 		}

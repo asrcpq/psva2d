@@ -7,11 +7,11 @@ pub type PRef = Arc<Mutex<Particle>>;
 
 #[derive(Copy, Clone)]
 pub struct Particle {
-	id: usize, // prevent dead lock
-	imass: f32,
-	pos: V2,
-	ppos: V2,
-	accel: V2,
+	pub id: usize, // prevent dead lock
+	pub imass: f32,
+	pub pos: V2,
+	pub ppos: V2,
+	pub accel: V2,
 }
 
 impl Particle {
@@ -54,7 +54,7 @@ impl Particle {
 	pub fn update(&mut self, t: f32) {
 		if self.imass == 0f32 {
 			return;
-		} // fixed
+		}
 		let ppos = self.pos;
 		// TODO: apply accel to ppos for stability
 		let dv = self.accel * t;

@@ -13,6 +13,7 @@ pub struct PhysicalModel {
 impl PhysicalModel {
 	#[allow(clippy::needless_range_loop)]
 	pub fn new_block(
+		mass: f32,
 		x: usize,
 		y: usize,
 		size: f32,
@@ -26,7 +27,6 @@ impl PhysicalModel {
 		for idx in 0..x {
 			let mut pline = vec![];
 			for idy in 0..y {
-				let mass = if idx == 0 { f32::INFINITY } else { 1.0 };
 				let pos = V2::new(size * idx as f32, size * idy as f32);
 				let accel = V2::new(0., -9.8);
 				let p = Particle::new_ref(id_alloc, mass, pos, accel);

@@ -24,10 +24,11 @@ impl TextureIndexer {
 		let mut faces = Vec::new();
 		for constraint in pr_model.constraints.iter() {
 			if constraint.id > 0 {
-				let texind = self.texture_map.get(&constraint.id).unwrap();
+				// FIXME
+				// let texind = self.texture_map.get(&constraint.id).unwrap();
 				let face = Face {
 					vid: constraint.particles.clone().try_into().unwrap(),
-					uvid: [0; 3], // FIXME
+					uvid: [0; 3],
 				};
 				faces.push(face);
 			} else if constraint.particles.len() == 3 { // TODO: remove
