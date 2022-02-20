@@ -18,7 +18,6 @@ pub fn run(mut pworld: PWorld) {
 	let _ = std::thread::spawn(move || {
 		let (tx, rx) = channel();
 		let _ = std::thread::spawn(move || {
-			pworld.init_test();
 			pworld.run_thread(tx);
 		});
 		while let Ok(pr_model) = rx.recv() {

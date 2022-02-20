@@ -21,6 +21,7 @@ pub struct ImageModelBuilder {
 
 impl ImageModelBuilder {
 	pub fn load_image(image_path: &str) -> Self {
+		eprintln!("Loading {}", image_path);
 		let image = image::open(image_path).unwrap().into_rgba8();
 		let len = [64, 64];
 		assert_eq!(image.width(), 1024);
@@ -56,7 +57,7 @@ impl ImageModelBuilder {
 		}
 	}
 
-	pub fn get_particles(&self, offsets: Vec<[isize; 2]>) -> Vec<Vec<PRef>> {
+	fn get_particles(&self, offsets: Vec<[isize; 2]>) -> Vec<Vec<PRef>> {
 		let mut result = vec![];
 		for idx in 0..self.len[0] as isize {
 			'cell_loop: for idy in 0..self.len[1] as isize {
