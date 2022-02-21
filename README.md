@@ -1,10 +1,6 @@
 # Todo:
 
-* mipmap bug?
-
-* fix bench
-
-* remove protocol
+* show fps(status bar)
 
 * wf plot distance constraint(in another color)
 
@@ -12,11 +8,11 @@
 
 * solid model/background model(coordinate grid is a type of it)
 
-* show fps(status bar)
-
 * plastic
 
 * break
+
+* hinge
 
 * user control
 

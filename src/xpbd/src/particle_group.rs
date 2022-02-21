@@ -29,10 +29,6 @@ impl Default for ParticleGroup {
 }
 
 impl ParticleGroup {
-	pub fn csize(&self) -> f32 {
-		self.csize
-	}
-
 	pub fn update(&mut self, dt: f32) {
 		let old_shp = std::mem::take(&mut self.shp);
 		for pref in old_shp.into_iter().map(|(_, p)| p).flatten() {

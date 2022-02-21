@@ -73,27 +73,6 @@ impl PWorld {
 		self
 	}
 
-	pub fn init_test(&mut self) {
-		self.pg = Default::default();
-		self.constraints = Default::default();
-		for m in 0..2 {
-			for n in 0..3 {
-				let x = -5.0 + 0.2 * n as f32 + 2.0 * m as f32;
-				let y = -0.2 - 1.0 * n as f32 - 0.2 * (m % 2) as f32;
-				let pmodel = PhysicalModel::new_block(
-					// if n == 0 { f32::INFINITY } else {1.0},
-					1.0,
-					25,
-					3,
-					self.pg.csize(),
-					1e-5 * (0.1f32).powf(m as f32),
-					1e-8 * (0.1f32).powf(n as f32),
-				);
-				self.add_model(pmodel, V2::new(x, y));
-			}
-		}
-	}
-
 	pub fn add_model(&mut self, physical_model: PhysicalModel, offset: V2) {
 		eprintln!("INFO: add model: {:?}", physical_model);
 		let mut id_map = vec![];
