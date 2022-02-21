@@ -21,8 +21,8 @@ impl Default for FaceInfo {
 
 #[derive(Default)]
 pub struct TextureIndexer {
-	id_alloc: usize, // constraint id
-	texture_map: HashMap<usize, FaceInfo>,
+	id_alloc: isize, // constraint id
+	texture_map: HashMap<isize, FaceInfo>,
 }
 
 impl TextureIndexer {
@@ -52,7 +52,7 @@ impl TextureIndexer {
 		result
 	}
 
-	pub fn alloc_id(&mut self, info: FaceInfo) -> usize {
+	pub fn alloc_id(&mut self, info: FaceInfo) -> isize {
 		self.texture_map.insert(self.id_alloc, info);
 		self.id_alloc += 1;
 		self.id_alloc - 1

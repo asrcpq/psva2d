@@ -1,8 +1,12 @@
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::{Duration, SystemTime};
 
+use crate::constraint::constraint_template::ConstraintTemplate;
+use crate::constraint::distance::DistanceConstraint;
+use crate::constraint::volume::VolumeConstraint;
 use crate::constraint::Constraint;
 use crate::controller_message::ControllerMessage;
+use crate::particle::Particle;
 use crate::particle_group::ParticleGroup;
 use crate::physical_model::PhysicalModel;
 use crate::V2;
@@ -91,12 +95,35 @@ impl PWorld {
 	}
 
 	pub fn add_model(&mut self, physical_model: PhysicalModel, offset: V2) {
+		eprintln!("INFO: add model: {:?}", physical_model);
+		let mut id_map = vec![];
 		for p in physical_model.particles.into_iter() {
-			p.try_lock().unwrap().offset_pos(offset);
-			self.pg.add_pref(p);
+			let p =
+				Particle::new_ref(0, p.imass, p.pos + offset, V2::new(0., 9.8));
+			self.pg.add_pref(p.clone());
+			id_map.push(p);
 		}
 		for c in physical_model.constraints.into_iter() {
-			self.constraints.push(c);
+			use ConstraintTemplate::*;
+			let con = match c {
+				Distance(ct) => {
+					let p1 = id_map[ct.ps[0]].clone();
+					let p2 = id_map[ct.ps[1]].clone();
+					DistanceConstraint::new_with_l0(p1, p2, ct.l0)
+						.with_compliance(ct.compliance)
+						.with_ty(ct.ty)
+						.with_id(ct.id)
+						.build()
+				}
+				Volume(ct) => {
+					let ps = (0..3).map(|i| id_map[ct.ps[i]].clone()).collect();
+					VolumeConstraint::new(ps)
+						.with_compliance(ct.compliance)
+						.with_id(ct.id)
+						.build()
+				}
+			};
+			self.constraints.push(con);
 		}
 	}
 
@@ -155,10 +182,15 @@ impl PWorld {
 		let mut start_time = SystemTime::now();
 		let rtime: u64 =
 			(self.dt * 1e6 * self.ppr as f32 * self.time_scale) as u64;
+		let mut first_frame = true;
 		loop {
 			if self.forward_frames != 0 {
 				self.forward_frames -= 1;
-				self.run();
+				if !first_frame {
+					self.run();
+				} else {
+					first_frame = false;
+				}
 				let model = self.pr_model();
 				tx.send(model).unwrap();
 			}

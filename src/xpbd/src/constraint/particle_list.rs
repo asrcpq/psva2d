@@ -6,22 +6,26 @@ pub struct ParticleList {
 }
 
 impl ParticleList {
-	pub fn new(particles: Vec<PRef>) -> Self {
-		let mut zipped: Vec<_> = particles
-			.into_iter()
-			.map(|x| {
-				(
-					{
-						let id = x.try_lock().unwrap().get_id();
-						id
-					},
-					x,
-				)
-			})
-			.collect();
-		zipped.sort_by_key(|x| x.0);
-		Self {
-			particles: zipped.into_iter().map(|(_, p)| p).collect(),
+	pub fn new(particles: Vec<PRef>, sort: bool) -> Self {
+		if sort {
+			let mut zipped: Vec<_> = particles
+				.into_iter()
+				.map(|x| {
+					(
+						{
+							let id = x.try_lock().unwrap().get_id();
+							id
+						},
+						x,
+					)
+				})
+				.collect();
+			zipped.sort_by_key(|x| x.0);
+			Self {
+				particles: zipped.into_iter().map(|(_, p)| p).collect(),
+			}
+		} else {
+			Self { particles }
 		}
 	}
 

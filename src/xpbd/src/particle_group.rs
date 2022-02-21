@@ -143,7 +143,7 @@ impl ParticleGroup {
 		)
 	}
 
-	pub fn add_pref(&mut self, p: PRef) {
+	pub fn add_pref(&mut self, p: PRef) -> usize {
 		let pos = {
 			let mut p = p.try_lock().unwrap();
 			p.set_id(self.id_alloc);
@@ -154,5 +154,6 @@ impl ParticleGroup {
 		let e = self.shp.entry(cpos).or_insert_with(Vec::new);
 		(*e).push(p);
 		self.id_alloc += 1;
+		self.id_alloc - 1
 	}
 }

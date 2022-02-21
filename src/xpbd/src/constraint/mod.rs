@@ -1,3 +1,4 @@
+pub mod constraint_template;
 pub mod distance;
 pub mod volume;
 
