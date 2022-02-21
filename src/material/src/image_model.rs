@@ -114,7 +114,7 @@ impl ImageModelBuilder {
 			let dc =
 				DistanceConstraint::new(v[0].pref.clone(), v[1].pref.clone())
 					.attractive_only()
-					.with_compliance(1e-7)
+					.with_compliance(1e-5)
 					.build();
 			constraints.push(dc);
 		});
@@ -136,7 +136,7 @@ impl ImageModelBuilder {
 			});
 			let vc = VolumeConstraint::new(prefs)
 				.with_id(cid)
-				.with_compliance(1e-10)
+				.with_compliance(1e-7)
 				.build();
 			constraints.push(vc);
 		});
