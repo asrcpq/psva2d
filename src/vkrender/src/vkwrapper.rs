@@ -205,7 +205,7 @@ pub fn get_textures(
 		let (image, future) = ImmutableImage::from_iter(
 			arrays.into_iter(),
 			dimensions,
-			MipmapsCount::Log2,
+			MipmapsCount::One,
 			Format::R8G8B8A8_SRGB,
 			queue,
 		)

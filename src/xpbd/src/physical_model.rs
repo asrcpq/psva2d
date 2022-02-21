@@ -17,17 +17,3 @@ impl std::fmt::Debug for PhysicalModel {
 		)
 	}
 }
-
-impl PhysicalModel {
-	#[allow(clippy::needless_range_loop)]
-	pub fn new_block(
-		_mass: f32,
-		_x: usize,
-		_y: usize,
-		_size: f32,
-		_compl_d: f32,
-		_compl_v: f32,
-	) -> Self {
-		unimplemented!()
-	}
-}
