@@ -3,7 +3,7 @@ use winit::event::{Event, KeyboardInput, VirtualKeyCode as Vkc, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop, EventLoopProxy};
 
 use material::face::TextureData;
-use material::texture_indexer::TextureIndexer;
+use material::texture_indexer::TextureIndexerRef;
 use protocol::pr_model::PrModel;
 use protocol::view::View;
 use vkrender::camera::Camera;
@@ -13,12 +13,12 @@ use xpbd::pworld::PWorld;
 
 pub fn run(
 	mut pworld: PWorld,
-	indexer: TextureIndexer,
+	indexer: TextureIndexerRef,
 	textures: Vec<TextureData>,
 ) {
 	let window_size = [1600u32, 1000];
 	let event_loop = EventLoop::with_user_event();
-	let mut vkr = VkRender::new(&event_loop, textures, window_size);
+	let mut vkr = VkRender::new(&event_loop, window_size, textures, indexer);
 	let mut view = View::default();
 	let elp: EventLoopProxy<PrModel> = event_loop.create_proxy();
 	let mut update_flag = true;
@@ -74,8 +74,7 @@ pub fn run(
 			if update_flag {
 				if let Some(pr_model) = &last_model {
 					update_flag = false;
-					let render_model = indexer.compile_model(pr_model);
-					vkr.render(render_model, Camera::from_view(&view));
+					vkr.render(pr_model, Camera::from_view(&view));
 				}
 			}
 		}

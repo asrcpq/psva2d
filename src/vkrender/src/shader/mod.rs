@@ -3,20 +3,27 @@
 pub mod vs {
 	vulkano_shaders::shader! {
 		ty: "vertex",
-		path: "src/shader/vert.glsl"
+		path: "src/shader/normal/vert.glsl"
 	}
 }
 
 pub mod fs {
 	vulkano_shaders::shader! {
 		ty: "fragment",
-		path: "src/shader/frag.glsl"
+		path: "src/shader/normal/frag.glsl"
+	}
+}
+
+pub mod vs_wf {
+	vulkano_shaders::shader! {
+		ty: "vertex",
+		path: "src/shader/wireframe/vert.glsl"
 	}
 }
 
 pub mod fs_wf {
 	vulkano_shaders::shader! {
 		ty: "fragment",
-		path: "src/shader/frag_wf.glsl"
+		path: "src/shader/wireframe/frag.glsl"
 	}
 }

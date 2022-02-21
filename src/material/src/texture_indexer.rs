@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 use crate::face::{Face, FaceGroup};
 use crate::render_model::RenderModel;
@@ -25,7 +27,13 @@ pub struct TextureIndexer {
 	texture_map: HashMap<isize, FaceInfo>,
 }
 
+pub type TextureIndexerRef = Rc<RefCell<TextureIndexer>>;
+
 impl TextureIndexer {
+	pub fn into_ref(self) -> TextureIndexerRef {
+		Rc::new(RefCell::new(self))
+	}
+
 	pub fn compile_model(&self, pr_model: &PrModel) -> RenderModel {
 		let mut result = RenderModel::default();
 		for (id, particle) in &pr_model.particles {

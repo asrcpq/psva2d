@@ -12,9 +12,6 @@ use vulkano::instance::Instance;
 use vulkano::pipeline::graphics::input_assembly::{
 	InputAssemblyState, PrimitiveTopology,
 };
-use vulkano::pipeline::graphics::rasterization::{
-	PolygonMode, RasterizationState,
-};
 use vulkano::pipeline::graphics::vertex_input::BuffersDefinition;
 use vulkano::pipeline::graphics::viewport::{Viewport, ViewportState};
 use vulkano::pipeline::{GraphicsPipeline, Pipeline};
@@ -25,7 +22,7 @@ use vulkano::sync::GpuFuture;
 use winit::window::Window;
 
 use crate::shader;
-use crate::vertex::Vertex;
+use crate::vertex::{Vertex, VertexWf};
 use material::face::TextureData;
 
 pub type VkwInstance = Arc<Instance>;
@@ -143,8 +140,6 @@ pub fn get_pipelines(
 ) -> Vec<VkwPipeline> {
 	let vs = shader::vs::load(device.clone()).unwrap();
 	let fs = shader::fs::load(device.clone()).unwrap();
-	let fs_wf = shader::fs_wf::load(device.clone()).unwrap();
-
 	let pipeline = GraphicsPipeline::start()
 		.vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
 		.vertex_shader(vs.entry_point("main").unwrap(), ())
@@ -157,16 +152,15 @@ pub fn get_pipelines(
 		.build(device.clone())
 		.unwrap();
 
+	let vs_wf = shader::vs_wf::load(device.clone()).unwrap();
+	let fs_wf = shader::fs_wf::load(device.clone()).unwrap();
 	let pipeline_wf = GraphicsPipeline::start()
-		.vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
-		.vertex_shader(vs.entry_point("main").unwrap(), ())
+		.vertex_input_state(BuffersDefinition::new().vertex::<VertexWf>())
+		.vertex_shader(vs_wf.entry_point("main").unwrap(), ())
 		.input_assembly_state(
-			InputAssemblyState::new().topology(PrimitiveTopology::TriangleList),
+			InputAssemblyState::new().topology(PrimitiveTopology::LineList),
 		)
 		.viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
-		.rasterization_state(
-			RasterizationState::new().polygon_mode(PolygonMode::Line),
-		)
 		.fragment_shader(fs_wf.entry_point("main").unwrap(), ())
 		.render_pass(Subpass::from(render_pass, 0).unwrap())
 		.build(device)

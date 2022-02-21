@@ -13,15 +13,17 @@ use winit::event_loop::EventLoopWindowTarget;
 
 use crate::camera::Camera;
 use crate::shader;
-use crate::vertex::Vertex;
+use crate::vertex::{Vertex, VertexWf};
 use crate::vkstatic::VkStatic;
 use crate::vkwrapper::{
 	window_size_dependent_setup, VkwPipeline, VkwTextureSet,
 };
 use material::face::TextureData;
 use material::render_model::RenderModel;
+use material::texture_indexer::TextureIndexerRef;
+use protocol::pr_model::PrModel;
 
-type VertexBuffers = Vec<(i32, Arc<CpuAccessibleBuffer<[Vertex]>>)>;
+type VertexBuffers<V> = Vec<(i32, Arc<CpuAccessibleBuffer<[V]>>)>;
 
 #[derive(PartialEq)]
 pub enum VkRenderMode {
@@ -34,13 +36,15 @@ pub struct VkRender {
 	render_mode: VkRenderMode,
 	viewport: Viewport,
 	v: VkStatic,
+	indexer: TextureIndexerRef,
 }
 
 impl VkRender {
 	pub fn new(
 		el: &EventLoopWindowTarget<protocol::pr_model::PrModel>,
-		textures: Vec<TextureData>,
 		window_size: [u32; 2],
+		textures: Vec<TextureData>,
+		indexer: TextureIndexerRef,
 	) -> Self {
 		let mut viewport = Viewport {
 			origin: [0.0, 0.0],
@@ -53,6 +57,7 @@ impl VkRender {
 			render_mode: VkRenderMode::Normal,
 			viewport,
 			v,
+			indexer,
 		}
 	}
 
@@ -75,7 +80,7 @@ impl VkRender {
 	fn generate_vertex_buffers(
 		&self,
 		render_model: &RenderModel,
-	) -> VertexBuffers {
+	) -> VertexBuffers<Vertex> {
 		let mut vertex_buffers = vec![];
 		for (&id, face_group) in &render_model.face_groups {
 			if id < 0 || id >= self.v.tex_coords.len() as i32 {
@@ -96,7 +101,37 @@ impl VkRender {
 						})
 					})
 					.flatten()
-					.collect::<Vec<Vertex>>()
+					.collect::<Vec<_>>()
+					.into_iter(),
+			)
+			.unwrap();
+			vertex_buffers.push((id, vertex_buffer));
+		}
+		vertex_buffers
+	}
+
+	fn generate_vertex_wf_buffers(
+		&self,
+		render_model: &RenderModel,
+	) -> VertexBuffers<VertexWf> {
+		let mut vertex_buffers = vec![];
+		for (&id, face_group) in &render_model.face_groups {
+			let vertex_buffer = CpuAccessibleBuffer::from_iter(
+				self.v.device.clone(),
+				BufferUsage::all(),
+				false,
+				face_group
+					.faces
+					.iter()
+					.flat_map(|x| {
+						vec![0, 1, 1, 2, 2, 0]
+							.into_iter()
+							.map(|i| VertexWf {
+								color: [1.0, 0.0, 0.0, 1.0],
+								pos: *render_model.vs.get(&x.vid[i]).unwrap(),
+							})
+					})
+					.collect::<Vec<_>>()
 					.into_iter(),
 			)
 			.unwrap();
@@ -110,7 +145,7 @@ impl VkRender {
 		image_num: usize,
 		pipeline: VkwPipeline,
 		set: VkwTextureSet,
-		vertex_buffers: VertexBuffers,
+		render_model: &RenderModel,
 	) -> PrimaryAutoCommandBuffer {
 		let mut builder = AutoCommandBufferBuilder::primary(
 			self.v.device.clone(),
@@ -131,6 +166,7 @@ impl VkRender {
 			.bind_pipeline_graphics(pipeline.clone());
 
 		if self.render_mode == VkRenderMode::Normal {
+			let vertex_buffers = self.generate_vertex_buffers(render_model);
 			builder.bind_descriptor_sets(
 				PipelineBindPoint::Graphics,
 				pipeline.layout().clone(),
@@ -151,6 +187,7 @@ impl VkRender {
 					.unwrap();
 			}
 		} else {
+			let vertex_buffers = self.generate_vertex_wf_buffers(render_model);
 			builder.bind_descriptor_sets(
 				PipelineBindPoint::Graphics,
 				pipeline.layout().clone(),
@@ -169,8 +206,8 @@ impl VkRender {
 		builder.build().unwrap()
 	}
 
-	pub fn render(&mut self, render_model: RenderModel, camera: Camera) {
-		let vertex_buffers = self.generate_vertex_buffers(&render_model);
+	pub fn render(&mut self, pr_model: &PrModel, camera: Camera) {
+		let render_model = self.indexer.borrow().compile_model(&pr_model);
 		let uniform_buffer = CpuAccessibleBuffer::from_data(
 			self.v.device.clone(),
 			BufferUsage::uniform_buffer(),
@@ -214,7 +251,7 @@ impl VkRender {
 		}
 
 		let command_buffer =
-			self.build_command(image_num, pipeline, set, vertex_buffers);
+			self.build_command(image_num, pipeline, set, &render_model);
 
 		let future = self
 			.v
