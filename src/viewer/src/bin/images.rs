@@ -18,5 +18,5 @@ fn main() {
 	pworld.add_model(pmodel, V2::new(0.5, -8.0));
 	let (texture_data, indexer) = imbuilder.finish();
 	textures.push(texture_data);
-	viewer::run(pworld, indexer, textures);
+	viewer::run(pworld, indexer.into_ref(), textures);
 }
