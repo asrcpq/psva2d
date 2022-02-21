@@ -7,7 +7,7 @@ pub struct PrParticle {
 }
 
 pub struct PrConstraint {
-	pub id: usize,
+	pub id: isize,
 	pub particles: Vec<usize>,
 }
 

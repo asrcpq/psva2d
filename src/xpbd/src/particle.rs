@@ -5,7 +5,13 @@ use protocol::pr_model::PrParticle;
 
 pub type PRef = Arc<Mutex<Particle>>;
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
+pub struct ParticleTemplate {
+	pub imass: f32,
+	pub pos: V2,
+}
+
+#[derive(Clone)]
 pub struct Particle {
 	pub id: usize, // prevent dead lock
 	pub imass: f32,
@@ -15,10 +21,10 @@ pub struct Particle {
 }
 
 impl Particle {
-	pub fn new_ref(id: usize, mass: f32, pos: V2, accel: V2) -> PRef {
+	pub fn new_ref(id: usize, imass: f32, pos: V2, accel: V2) -> PRef {
 		let result = Self {
 			id,
-			imass: 1f32 / mass, // inf is handled
+			imass, // inf is handled
 			pos,
 			ppos: pos,
 			accel,

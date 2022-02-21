@@ -4,6 +4,13 @@ use crate::particle::PRef;
 use crate::V2;
 use protocol::pr_model::PrConstraint;
 
+#[derive(Clone)]
+pub struct VolumeConstraintTemplate {
+	pub id: isize,
+	pub ps: Vec<usize>,
+	pub compliance: f32,
+}
+
 // fn area_f(x1: f32, y1: f32, x2: f32, y2: f32, x3: f32, y3: f32) -> f32 {
 // 	x1 * y2 + x2 * y3 + x3 * y1 - x3 * y2 - x1 * y3 - x2 * y1
 // }
@@ -17,8 +24,9 @@ fn area_p(p1: V2, p2: V2, p3: V2) -> f32 {
 
 #[derive(Clone)]
 pub struct VolumeConstraint {
-	id: usize, // for triangle render, 0 for no render
+	id: isize, // for triangle render, 0 for no render
 	ps: ParticleList,
+	ps_sort: ParticleList,
 	s0: f32,
 	lambda: f32,
 	compliance: f32,
@@ -26,21 +34,23 @@ pub struct VolumeConstraint {
 
 impl VolumeConstraint {
 	pub fn new(ps: Vec<PRef>) -> Self {
-		let ps = ParticleList::new(ps);
-		let p0 = ps[0].try_lock().unwrap().get_pos();
-		let p1 = ps[1].try_lock().unwrap().get_pos();
-		let p2 = ps[2].try_lock().unwrap().get_pos();
+		let ps_sort = ParticleList::new(ps.clone(), true);
+		let ps = ParticleList::new(ps, false);
+		let p0 = ps_sort[0].try_lock().unwrap().get_pos();
+		let p1 = ps_sort[1].try_lock().unwrap().get_pos();
+		let p2 = ps_sort[2].try_lock().unwrap().get_pos();
 		let s0 = area_p(p0, p1, p2);
 		Self {
-			id: 0,
+			id: -1,
 			ps,
+			ps_sort,
 			s0,
 			lambda: 0f32,
 			compliance: 1e-9,
 		}
 	}
 
-	pub fn with_id(mut self, id: usize) -> Self {
+	pub fn with_id(mut self, id: isize) -> Self {
 		self.id = id;
 		self
 	}
@@ -68,9 +78,9 @@ impl Constraint for VolumeConstraint {
 	}
 
 	fn step(&mut self, dt: f32) {
-		let mut p0_mut = self.ps[0].lock().unwrap();
-		let mut p1_mut = self.ps[1].lock().unwrap();
-		let mut p2_mut = self.ps[2].lock().unwrap();
+		let mut p0_mut = self.ps_sort[0].lock().unwrap();
+		let mut p1_mut = self.ps_sort[1].lock().unwrap();
+		let mut p2_mut = self.ps_sort[2].lock().unwrap();
 
 		let imass0 = p0_mut.get_imass();
 		let imass1 = p1_mut.get_imass();
