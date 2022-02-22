@@ -5,6 +5,7 @@ use vulkano::command_buffer::{
 	SubpassContents,
 };
 use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
+use vulkano::format::ClearValue;
 use vulkano::pipeline::graphics::viewport::Viewport;
 use vulkano::pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint};
 use vulkano::swapchain::{self, AcquireError, SwapchainCreationError};
@@ -13,7 +14,7 @@ use winit::event_loop::EventLoopWindowTarget;
 
 use crate::camera::Camera;
 use crate::shader;
-use crate::vertex::{Vertex, VertexWf};
+use crate::vertex::{Vertex, VertexText, VertexWf};
 use crate::vkstatic::VkStatic;
 use crate::vkwrapper::{
 	window_size_dependent_setup, VkwCommandBuffer, VkwPipeline, VkwTextureSet,
@@ -36,13 +37,19 @@ pub struct VkRender {
 	pub recreate_swapchain: bool,
 	render_mode: VkRenderMode,
 	viewport: Viewport,
+	text_scaler: f32,
+	text: Vec<u8>,
 	v: VkStatic,
 	indexer: TextureIndexerRef,
 }
 
 impl VkRender {
-	pub fn new(
-		el: &EventLoopWindowTarget<protocol::pr_model::PrModel>,
+	pub fn set_text(&mut self, text: Vec<u8>) {
+		self.text = text;
+	}
+
+	pub fn new<E>(
+		el: &EventLoopWindowTarget<E>,
 		window_size: [u32; 2],
 		textures: Vec<TextureData>,
 		indexer: TextureIndexerRef,
@@ -58,6 +65,8 @@ impl VkRender {
 			render_mode: VkRenderMode::Normal,
 			viewport,
 			v,
+			text_scaler: 1.0,
+			text: b"hello, world".to_vec(),
 			indexer,
 		}
 	}
@@ -196,13 +205,15 @@ impl VkRender {
 					0,
 					push_constants,
 				);
+				let buflen = vertex_buffer.len();
 				builder
-					.bind_vertex_buffers(0, vertex_buffer.clone())
-					.draw(vertex_buffer.len() as u32, 1, 0, 0)
+					.bind_vertex_buffers(0, vertex_buffer)
+					.draw(buflen as u32, 1, 0, 0)
 					.unwrap();
 			}
 		} else {
 			let vertex_buffer = self.generate_vertex_wf_buffer(pr_model);
+			let buflen = vertex_buffer.len();
 			builder
 				.bind_descriptor_sets(
 					PipelineBindPoint::Graphics,
@@ -210,16 +221,85 @@ impl VkRender {
 					0,
 					set,
 				)
-				.bind_vertex_buffers(0, vertex_buffer.clone())
-				.draw(vertex_buffer.len() as u32, 1, 0, 0)
+				.bind_vertex_buffers(0, vertex_buffer)
+				.draw(buflen as u32, 1, 0, 0)
 				.unwrap();
 		}
+		builder.end_render_pass().unwrap();
+
+		let mut coord_list = vec![];
+		let mut pos_list = vec![];
+		for (idx, &ch) in self.text.iter().enumerate() {
+			let idx = idx as u32;
+			let ux = ch as u32 % 32;
+			let uy = ch as u32 / 32;
+			let upos_list =
+				vec![[0, 0], [0, 1], [1, 1], [0, 0], [1, 0], [1, 1]];
+			coord_list.extend(upos_list.iter().map(|upos| {
+				[
+					((ux + upos[0]) * 32) as f32 / 1024f32,
+					((uy + upos[1]) * 32) as f32 / 1024f32,
+				]
+			}));
+			pos_list.extend(upos_list.iter().map(|upos| {
+				[
+					-1.0 + ((idx + upos[0]) * 32) as f32
+						/ self.viewport.dimensions[0] as f32
+						* self.text_scaler,
+					-1.0 + (upos[1] * 32) as f32
+						/ self.viewport.dimensions[1] as f32
+						* self.text_scaler,
+				]
+			}));
+		}
+		let vertex_buffer = pos_list
+			.into_iter()
+			.zip(coord_list.into_iter())
+			.map(|(p, c)| VertexText {
+				color: [1.0, 1.0, 1.0, 1.0],
+				pos: p,
+				tex_coord: c,
+			});
+		let vertex_buffer = CpuAccessibleBuffer::from_iter(
+			self.v.device.clone(),
+			BufferUsage::all(),
+			false,
+			vertex_buffer,
+		)
+		.unwrap();
+
+		builder
+			.begin_render_pass(
+				self.v.framebuffers_overlay[image_num].clone(),
+				SubpassContents::Inline,
+				vec![ClearValue::None],
+			)
+			.unwrap()
+			.set_viewport(0, [self.viewport.clone()])
+			.bind_pipeline_graphics(self.v.pipeline_text.clone());
+
+		builder.bind_descriptor_sets(
+			PipelineBindPoint::Graphics,
+			self.v.pipeline_text.layout().clone(),
+			0,
+			self.v.texture_set_text.clone(),
+		);
+		let buflen = vertex_buffer.len();
+		builder
+			.bind_vertex_buffers(0, vertex_buffer)
+			.draw(buflen as u32, 1, 0, 0)
+			.unwrap();
 
 		builder.end_render_pass().unwrap();
 		builder.build().unwrap()
 	}
 
-	fn render_world(&self, image_num: usize, pr_model: &PrModel, camera: Camera) -> VkwCommandBuffer {
+	fn render_world(
+		&self,
+		image_num: usize,
+		pr_model: &PrModel,
+		camera: Camera,
+	) -> VkwCommandBuffer {
 		let uniform_buffer = CpuAccessibleBuffer::from_data(
 			self.v.device.clone(),
 			BufferUsage::uniform_buffer(),
@@ -238,7 +318,6 @@ impl VkRender {
 
 		let command_buffer =
 			self.build_command(image_num, pipeline, set, pr_model);
-
 		Box::new(command_buffer)
 	}
 
@@ -306,6 +385,7 @@ impl VkRender {
 	fn create_swapchain(&mut self) {
 		eprintln!("Recreate swapchain");
 		let dimensions: [u32; 2] = self.v.surface.window().inner_size().into();
+		self.text_scaler = self.v.surface.window().scale_factor() as f32;
 		let (new_swapchain, new_images) =
 			match self.v.swapchain.recreate().dimensions(dimensions).build() {
 				Ok(r) => r,
@@ -319,13 +399,16 @@ impl VkRender {
 			};
 		self.v.swapchain = new_swapchain;
 
-		// Because framebuffers contains an Arc on the old swapchain, we need to
-		// recreate framebuffers as well.
 		let mut viewport = self.viewport.clone();
 		self.v.framebuffers = window_size_dependent_setup(
 			self.v.render_pass.clone(),
 			&new_images,
 			&mut viewport,
+		);
+		self.v.framebuffers_overlay = window_size_dependent_setup(
+			self.v.render_pass_overlay.clone(),
+			&new_images,
+			&mut viewport, // NOTE: mod twice, but leave it
 		);
 		self.viewport = viewport;
 	}

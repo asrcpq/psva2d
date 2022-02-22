@@ -137,6 +137,49 @@ pub fn get_render_pass<W>(
 	.unwrap()
 }
 
+pub fn get_render_pass_overlay<W>(
+	device: VkwDevice,
+	swapchain: VkwSwapchain<W>,
+) -> VkwRenderPass {
+	vulkano::single_pass_renderpass!(
+		device,
+		attachments: {
+			color: {
+				load: Load,
+				store: Store,
+				format: swapchain.format(),
+				samples: 1,
+			}
+		},
+		pass: {
+			color: [color],
+			depth_stencil: {}
+		}
+	)
+	.unwrap()
+}
+
+pub fn get_pipeline_text(
+	render_pass: VkwRenderPass,
+	device: VkwDevice,
+) -> VkwPipeline {
+	let vs_text = shader::vs_text::load(device.clone()).unwrap();
+	let fs_text = shader::fs_text::load(device.clone()).unwrap();
+	let pipeline_text = GraphicsPipeline::start()
+		.vertex_input_state(BuffersDefinition::new().vertex::<VertexText>())
+		.vertex_shader(vs_text.entry_point("main").unwrap(), ())
+		.input_assembly_state(
+			InputAssemblyState::new().topology(PrimitiveTopology::TriangleList),
+		)
+		.viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
+		.fragment_shader(fs_text.entry_point("main").unwrap(), ())
+		.render_pass(Subpass::from(render_pass, 0).unwrap())
+		.build(device)
+		.unwrap();
+
+	pipeline_text
+}
+
 pub fn get_pipelines(
 	render_pass: VkwRenderPass,
 	device: VkwDevice,
@@ -155,20 +198,6 @@ pub fn get_pipelines(
 		.build(device.clone())
 		.unwrap();
 
-	let vs_text = shader::vs_text::load(device.clone()).unwrap();
-	let fs_text = shader::fs_text::load(device.clone()).unwrap();
-	let pipeline_text = GraphicsPipeline::start()
-		.vertex_input_state(BuffersDefinition::new().vertex::<VertexText>())
-		.vertex_shader(vs_text.entry_point("main").unwrap(), ())
-		.input_assembly_state(
-			InputAssemblyState::new().topology(PrimitiveTopology::TriangleList),
-		)
-		.viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
-		.fragment_shader(fs_text.entry_point("main").unwrap(), ())
-		.render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
-		.build(device.clone())
-		.unwrap();
-
 	let vs_wf = shader::vs_wf::load(device.clone()).unwrap();
 	let fs_wf = shader::fs_wf::load(device.clone()).unwrap();
 	let pipeline_wf = GraphicsPipeline::start()
@@ -183,7 +212,7 @@ pub fn get_pipelines(
 		.build(device)
 		.unwrap();
 
-	vec![pipeline, pipeline_text, pipeline_wf]
+	vec![pipeline, pipeline_wf]
 }
 
 pub fn get_text_texture(
@@ -198,10 +227,12 @@ pub fn get_text_texture(
 			array_layers: 1,
 		};
 		#[allow(clippy::needless_collect)]
-		let array = image::open("assets/images/font.png")
+		let array: Vec<u8> = image::open("assets/images/font.png")
 			.unwrap()
-			.into_luma8()
-			.into_raw();
+			.into_rgba8()
+			.pixels()
+			.map(|x| x[3])
+			.collect();
 		let (image, future) = ImmutableImage::from_iter(
 			array.into_iter(),
 			dimensions,
@@ -218,7 +249,7 @@ pub fn get_text_texture(
 	};
 
 	let sampler = Sampler::simple_repeat_linear(device).unwrap();
-	let layout = pipeline.layout().descriptor_set_layouts().get(1).unwrap();
+	let layout = pipeline.layout().descriptor_set_layouts().get(0).unwrap();
 	let texture_set = PersistentDescriptorSet::new(
 		layout.clone(),
 		[WriteDescriptorSet::image_view_sampler(0, texture, sampler)],
@@ -282,8 +313,8 @@ pub fn get_textures(
 }
 
 pub fn window_size_dependent_setup(
-	render_pass: Arc<RenderPass>,
-	images: &[Arc<SwapchainImage<Window>>],
+	render_pass: VkwRenderPass,
+	images: &VkwImages<Window>,
 	viewport: &mut Viewport,
 ) -> Vec<VkwFramebuffer> {
 	let dimensions = images[0].dimensions().width_height();
