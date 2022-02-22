@@ -229,24 +229,28 @@ impl VkRender {
 
 		let mut coord_list = vec![];
 		let mut pos_list = vec![];
+		let w = 16;
+		let h = 32;
+		let size_x = 1024 / w;
+		// let size_y = 1024 / h;
 		for (idx, &ch) in self.text.iter().enumerate() {
 			let idx = idx as u32;
-			let ux = ch as u32 % 32;
-			let uy = ch as u32 / 32;
+			let ux = ch as u32 % size_x;
+			let uy = ch as u32 / size_x;
 			let upos_list =
 				vec![[0, 0], [0, 1], [1, 1], [0, 0], [1, 0], [1, 1]];
 			coord_list.extend(upos_list.iter().map(|upos| {
 				[
-					((ux + upos[0]) * 32) as f32 / 1024f32,
-					((uy + upos[1]) * 32) as f32 / 1024f32,
+					((ux + upos[0]) * w) as f32 / 1024f32,
+					((uy + upos[1]) * h) as f32 / 1024f32,
 				]
 			}));
 			pos_list.extend(upos_list.iter().map(|upos| {
 				[
-					-1.0 + ((idx + upos[0]) * 32) as f32
+					-1.0 + ((idx + upos[0]) * w) as f32
 						/ self.viewport.dimensions[0] as f32
 						* self.text_scaler,
-					-1.0 + (upos[1] * 32) as f32
+					-1.0 + (upos[1] * h) as f32
 						/ self.viewport.dimensions[1] as f32
 						* self.text_scaler,
 				]
