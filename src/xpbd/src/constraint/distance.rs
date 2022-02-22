@@ -29,6 +29,8 @@ pub struct DistanceConstraint {
 	l0: f32,
 	lambda: f32,
 	compliance: f32,
+	plas_thresh: f32,
+	plas_cutoff: f32,
 	ty: DCTy,
 }
 
@@ -56,17 +58,28 @@ impl DistanceConstraint {
 			l0,
 			lambda: 0f32,
 			compliance: 1e-7,
+			plas_thresh: 0.0,
+			plas_cutoff: 1.0,
 			ty: DCTy::Normal,
 		}
 	}
 
+	
+
 	pub fn repulsive_only(mut self) -> Self {
 		self.ty = DCTy::Repulsive;
+		self.plas_thresh = 0.0;
 		self
 	}
 
 	pub fn attractive_only(mut self) -> Self {
 		self.ty = DCTy::Attractive;
+		self
+	}
+
+	pub fn with_plasticity(mut self, thresh: f32, cutoff: f32) -> Self {
+		self.plas_thresh = thresh;
+		self.plas_cutoff = cutoff * self.l0;
 		self
 	}
 
@@ -95,6 +108,18 @@ impl Constraint for DistanceConstraint {
 
 	fn pre_iteration(&mut self) {
 		self.lambda = 0f32;
+		if self.plas_thresh == 0.0 {
+			return;
+		}
+		let p1 = self.ps[0].try_lock().unwrap();
+		let p2 = self.ps[1].try_lock().unwrap();
+
+		let dp = p1.get_pos() - p2.get_pos();
+		let l = dp.magnitude();
+		let dl = l - self.l0;
+		if dl.abs() > self.plas_cutoff {
+			self.l0 += dl * self.plas_thresh;
+		}
 	}
 
 	fn step(&mut self, dt: f32) {
