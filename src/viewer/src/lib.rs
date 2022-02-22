@@ -1,3 +1,5 @@
+use protocol::user_event::UserEvent;
+
 use std::sync::mpsc::channel;
 use winit::event::{Event, KeyboardInput, VirtualKeyCode as Vkc, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop, EventLoopProxy};
@@ -17,10 +19,10 @@ pub fn run(
 	textures: Vec<TextureData>,
 ) {
 	let window_size = [1600u32, 1000];
-	let event_loop = EventLoop::with_user_event();
+	let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
 	let mut vkr = VkRender::new(&event_loop, window_size, textures, indexer);
 	let mut view = View::default();
-	let elp: EventLoopProxy<PrModel> = event_loop.create_proxy();
+	let elp: EventLoopProxy<UserEvent> = event_loop.create_proxy();
 	let mut update_flag = true;
 	let (tx2, rx2) = channel();
 	let _ = std::thread::spawn(move || {
@@ -28,8 +30,8 @@ pub fn run(
 		let _ = std::thread::spawn(move || {
 			pworld.run_thread(tx, rx2);
 		});
-		while let Ok(pr_model) = rx.recv() {
-			elp.send_event(pr_model).unwrap();
+		while let Ok(user_event) = rx.recv() {
+			elp.send_event(user_event).unwrap();
 		}
 	});
 	let mut last_model: Option<PrModel> = None;
@@ -78,10 +80,15 @@ pub fn run(
 				}
 			}
 		}
-		Event::UserEvent(pr_model) => {
-			last_model = Some(pr_model);
-			update_flag = true;
-		}
+		Event::UserEvent(user_event) => match user_event {
+			UserEvent::Update(pr_model, load) => {
+				let fps_text =
+					format!("Load: {:.2}%", load * 100.).bytes().collect();
+				vkr.set_text(fps_text);
+				last_model = Some(pr_model);
+				update_flag = true;
+			}
+		},
 		Event::MainEventsCleared => {
 			std::thread::sleep(std::time::Duration::from_millis(10));
 		}

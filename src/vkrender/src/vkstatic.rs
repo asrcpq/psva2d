@@ -18,11 +18,13 @@ pub struct VkStatic {
 	pub surface: VkwSurface<Window>,
 	pub swapchain: VkwSwapchain<Window>,
 	pub framebuffers: Vec<VkwFramebuffer>,
+	pub framebuffers_overlay: Vec<VkwFramebuffer>,
 	pub previous_frame_end: Option<VkwFuture>,
 	pub pipeline: VkwPipeline,
 	pub pipeline_text: VkwPipeline,
 	pub pipeline_wf: VkwPipeline,
 	pub render_pass: Arc<RenderPass>,
+	pub render_pass_overlay: Arc<RenderPass>,
 	pub texture_set: VkwTextureSet,
 	pub texture_set_text: VkwTextureSet,
 	pub tex_coords: VkwTexCoords,
@@ -33,8 +35,8 @@ fn winit_size(size: [u32; 2]) -> Size {
 }
 
 impl VkStatic {
-	pub fn new(
-		el: &EventLoopWindowTarget<protocol::pr_model::PrModel>,
+	pub fn new<E>(
+		el: &EventLoopWindowTarget<E>,
 		textures: Vec<TextureData>,
 		window_size: [u32; 2],
 		viewport: &mut Viewport,
@@ -60,13 +62,21 @@ impl VkStatic {
 		);
 
 		let render_pass = get_render_pass(device.clone(), swapchain.clone());
+		let render_pass_overlay =
+			get_render_pass_overlay(device.clone(), swapchain.clone());
 		let pipelines = get_pipelines(render_pass.clone(), device.clone());
 		let pipeline = pipelines[0].clone();
-		let pipeline_text = pipelines[1].clone();
-		let pipeline_wf = pipelines[2].clone();
+		let pipeline_wf = pipelines[1].clone();
+		let pipeline_text =
+			get_pipeline_text(render_pass_overlay.clone(), device.clone());
 
 		let framebuffers =
 			window_size_dependent_setup(render_pass.clone(), &images, viewport);
+		let framebuffers_overlay = window_size_dependent_setup(
+			render_pass_overlay.clone(),
+			&images,
+			viewport,
+		);
 		let (texture_set, tex_coords) = get_textures(
 			textures,
 			device.clone(),
@@ -85,11 +95,13 @@ impl VkStatic {
 			surface,
 			swapchain,
 			framebuffers,
+			framebuffers_overlay,
 			previous_frame_end,
 			pipeline,
 			pipeline_text,
 			pipeline_wf,
 			render_pass,
+			render_pass_overlay,
 			texture_set,
 			texture_set_text,
 			tex_coords,

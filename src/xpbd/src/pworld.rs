@@ -12,6 +12,7 @@ use crate::physical_model::PhysicalModel;
 use crate::V2;
 use protocol::pr_model::PrConstraint;
 use protocol::pr_model::PrModel;
+use protocol::user_event::UserEvent;
 
 pub struct PWorld {
 	pub dt: f32,
@@ -159,7 +160,7 @@ impl PWorld {
 
 	pub fn run_thread(
 		&mut self,
-		tx: Sender<PrModel>,
+		tx: Sender<UserEvent>,
 		rx: Receiver<ControllerMessage>,
 	) {
 		let mut start_time = SystemTime::now();
@@ -175,7 +176,12 @@ impl PWorld {
 					first_frame = false;
 				}
 				let model = self.pr_model();
-				tx.send(model).unwrap();
+				let next_time = SystemTime::now();
+				let dt =
+					next_time.duration_since(start_time).unwrap().as_micros()
+						as f32 / rtime as f32;
+				let event = UserEvent::Update(model, dt);
+				tx.send(event).unwrap();
 			}
 
 			let next_time = SystemTime::now();
