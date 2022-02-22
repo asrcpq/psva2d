@@ -226,13 +226,10 @@ pub fn get_text_texture(
 			height: 1024,
 			array_layers: 1,
 		};
-		#[allow(clippy::needless_collect)]
 		let array: Vec<u8> = image::open("assets/images/font.png")
 			.unwrap()
-			.into_rgba8()
-			.pixels()
-			.map(|x| x[3])
-			.collect();
+			.into_luma8()
+			.into_raw();
 		let (image, future) = ImmutableImage::from_iter(
 			array.into_iter(),
 			dimensions,
