@@ -38,14 +38,20 @@ pub struct VkRender {
 	render_mode: VkRenderMode,
 	viewport: Viewport,
 	text_scaler: f32,
+	text_color: [f32; 4],
 	text: Vec<u8>,
 	v: VkStatic,
 	indexer: TextureIndexerRef,
 }
 
 impl VkRender {
-	pub fn set_text(&mut self, text: Vec<u8>) {
+	pub fn set_text(&mut self, text: Vec<u8>, bad: bool) {
 		self.text = text;
+		if bad {
+			self.text_color = [1.0, 0.0, 0.0, 1.0];
+		} else {
+			self.text_color = [0.7, 0.8, 0.7, 1.0];
+		}
 	}
 
 	pub fn new<E>(
@@ -67,6 +73,7 @@ impl VkRender {
 			v,
 			text_scaler: 1.0,
 			text: b"hello, world".to_vec(),
+			text_color: [1.0, 0.0, 0.0, 1.0],
 			indexer,
 		}
 	}
@@ -260,7 +267,7 @@ impl VkRender {
 			.into_iter()
 			.zip(coord_list.into_iter())
 			.map(|(p, c)| VertexText {
-				color: [1.0, 1.0, 1.0, 1.0],
+				color: self.text_color,
 				pos: p,
 				tex_coord: c,
 			});

@@ -1,23 +1,37 @@
 # Todo:
 
-* text texture generation
+* UI
 
-* render to images/video/gif
+	* draw coordinate
 
-* wf plot distance constraint(in another color)
+	* show more info(particle/constraint len, max speed/limit, energy)
 
-* remove radius, face collision
+	* toggle all info
 
-* solid model/background model(coordinate grid is a type of it)
+	* command input bar
 
-* plastic
+* Physics
 
-* break
+	* remove radius, face collision
 
-* hinge
+	* plastic
 
-* user control
+	* break
 
-* z
+	* hinge
 
-* fluid
+	* fluid
+
+* Features
+
+	* solid model/background model(coordinate grid is a type of it)
+
+	* z
+
+	* user control
+
+* Render
+
+	* split label stack overlay render
+
+	* render to images/video/gif

@@ -43,6 +43,7 @@ pub fn run(
 			WindowEvent::Resized(new_size) => {
 				view.resize([new_size.width, new_size.height]);
 				vkr.recreate_swapchain = true;
+				update_flag = true;
 			}
 			WindowEvent::KeyboardInput {
 				input:
@@ -85,7 +86,7 @@ pub fn run(
 			UserEvent::Update(pr_model, load) => {
 				let fps_text =
 					format!("Load: {:.2}%", load * 100.).bytes().collect();
-				vkr.set_text(fps_text);
+				vkr.set_text(fps_text, load > 1.0);
 				last_model = Some(pr_model);
 				update_flag = true;
 			}
