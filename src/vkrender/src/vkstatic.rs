@@ -47,7 +47,7 @@ impl VkStatic {
 				.unwrap();
 		let surface = WindowBuilder::new()
 			.with_inner_size(winit_size(window_size))
-			.with_resizable(false)
+			//.with_resizable(false)
 			.build_vk_surface(el, instance.clone())
 			.unwrap();
 
