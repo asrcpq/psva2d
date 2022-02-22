@@ -6,6 +6,7 @@ use vulkano::command_buffer::{
 };
 use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::format::ClearValue;
+use vulkano::image::ImageAccess;
 use vulkano::pipeline::graphics::viewport::Viewport;
 use vulkano::pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint};
 use vulkano::swapchain::{self, AcquireError, SwapchainCreationError};
@@ -15,8 +16,10 @@ use winit::event_loop::EventLoopWindowTarget;
 use crate::camera::Camera;
 use crate::shader;
 use crate::vertex::{Vertex, VertexText, VertexWf};
-use crate::vkstatic::VkStatic;
-use crate::vkwrapper::{
+use super::vkstatic::vks::Vks;
+use super::vkstatic::vks_overlay::VksOverlay;
+use super::vkstatic::vks_world::VksWorld;
+use super::vkwrapper::{
 	window_size_dependent_setup, VkwCommandBuffer, VkwPipeline, VkwTextureSet,
 };
 use material::face::TextureData;
@@ -40,8 +43,11 @@ pub struct VkRender {
 	text_scaler: f32,
 	text_color: [f32; 4],
 	text: Vec<u8>,
-	v: VkStatic,
 	indexer: TextureIndexerRef,
+
+	v: Vks,
+	r_world: VksWorld,
+	r_overlay: VksOverlay,
 }
 
 impl VkRender {
@@ -60,21 +66,25 @@ impl VkRender {
 		textures: Vec<TextureData>,
 		indexer: TextureIndexerRef,
 	) -> Self {
-		let mut viewport = Viewport {
+		let viewport = Viewport {
 			origin: [0.0, 0.0],
-			dimensions: [0.0, 0.0],
+			dimensions: [window_size[0] as f32, window_size[1] as f32],
 			depth_range: 0.0..1.0,
 		};
-		let v = VkStatic::new(el, textures, window_size, &mut viewport);
+		let v = Vks::new(el, window_size);
+		let r_world = VksWorld::new(&v, textures);
+		let r_overlay = VksOverlay::new(&v);
 		Self {
 			recreate_swapchain: false,
 			render_mode: VkRenderMode::Normal,
 			viewport,
-			v,
 			text_scaler: 1.0,
 			text: b"hello, world".to_vec(),
 			text_color: [1.0, 0.0, 0.0, 1.0],
 			indexer,
+			v,
+			r_world,
+			r_overlay,
 		}
 	}
 
@@ -88,9 +98,9 @@ impl VkRender {
 
 	pub fn get_pipeline(&self) -> Arc<GraphicsPipeline> {
 		if self.render_mode == VkRenderMode::Normal {
-			self.v.pipeline.clone()
+			self.r_world.pipeline.clone()
 		} else {
-			self.v.pipeline_wf.clone()
+			self.r_world.pipeline_wf.clone()
 		}
 	}
 
@@ -100,7 +110,7 @@ impl VkRender {
 	) -> VertexBuffers<Vertex> {
 		let mut vertex_buffers = vec![];
 		for (&id, face_group) in &render_model.face_groups {
-			if id < 0 || id >= self.v.tex_coords.len() as i32 {
+			if id < 0 || id >= self.r_world.tex_coords.len() as i32 {
 				continue;
 			}
 			let vertex_buffer = CpuAccessibleBuffer::from_iter(
@@ -113,7 +123,7 @@ impl VkRender {
 					.map(|x| {
 						(0..3).map(|i| Vertex {
 							pos: *render_model.vs.get(&x.vid[i]).unwrap(),
-							tex_coord: self.v.tex_coords[id as usize]
+							tex_coord: self.r_world.tex_coords[id as usize]
 								[x.uvid[i]],
 						})
 					})
@@ -187,7 +197,7 @@ impl VkRender {
 		let clear_values = vec![[0.0, 0.0, 0.0, 1.0].into()];
 		builder
 			.begin_render_pass(
-				self.v.framebuffers[image_num].clone(),
+				self.r_world.framebuffers[image_num].clone(),
 				SubpassContents::Inline,
 				clear_values,
 			)
@@ -202,7 +212,7 @@ impl VkRender {
 				PipelineBindPoint::Graphics,
 				pipeline.layout().clone(),
 				0,
-				vec![set, self.v.texture_set.clone()],
+				vec![set, self.r_world.texture_set.clone()],
 			);
 			for (id, vertex_buffer) in vertex_buffers.into_iter() {
 				let push_constants =
@@ -255,10 +265,10 @@ impl VkRender {
 			pos_list.extend(upos_list.iter().map(|upos| {
 				[
 					-1.0 + ((idx + upos[0]) * w) as f32
-						/ self.viewport.dimensions[0] as f32
+						/ self.viewport.dimensions[0]
 						* self.text_scaler,
 					-1.0 + (upos[1] * h) as f32
-						/ self.viewport.dimensions[1] as f32
+						/ self.viewport.dimensions[1]
 						* self.text_scaler,
 				]
 			}));
@@ -281,19 +291,19 @@ impl VkRender {
 
 		builder
 			.begin_render_pass(
-				self.v.framebuffers_overlay[image_num].clone(),
+				self.r_overlay.framebuffers[image_num].clone(),
 				SubpassContents::Inline,
 				vec![ClearValue::None],
 			)
 			.unwrap()
 			.set_viewport(0, [self.viewport.clone()])
-			.bind_pipeline_graphics(self.v.pipeline_text.clone());
+			.bind_pipeline_graphics(self.r_overlay.pipeline_text.clone());
 
 		builder.bind_descriptor_sets(
 			PipelineBindPoint::Graphics,
-			self.v.pipeline_text.layout().clone(),
+			self.r_overlay.pipeline_text.layout().clone(),
 			0,
-			self.v.texture_set_text.clone(),
+			self.r_overlay.texture_set_text.clone(),
 		);
 		let buflen = vertex_buffer.len();
 		builder
@@ -410,17 +420,16 @@ impl VkRender {
 			};
 		self.v.swapchain = new_swapchain;
 
-		let mut viewport = self.viewport.clone();
-		self.v.framebuffers = window_size_dependent_setup(
-			self.v.render_pass.clone(),
+		let dimensions = new_images[0].dimensions().width_height();
+		self.viewport.dimensions = [dimensions[0] as f32, dimensions[1] as f32];
+		self.r_world.framebuffers = window_size_dependent_setup(
+			self.r_world.render_pass.clone(),
 			&new_images,
-			&mut viewport,
 		);
-		self.v.framebuffers_overlay = window_size_dependent_setup(
-			self.v.render_pass_overlay.clone(),
+		self.r_overlay.framebuffers = window_size_dependent_setup(
+			self.r_overlay.render_pass.clone(),
 			&new_images,
-			&mut viewport, // NOTE: mod twice, but leave it
 		);
-		self.viewport = viewport;
+		self.v.images = new_images;
 	}
 }

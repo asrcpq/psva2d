@@ -9,7 +9,7 @@ use material::texture_indexer::TextureIndexerRef;
 use protocol::pr_model::PrModel;
 use protocol::view::View;
 use vkrender::camera::Camera;
-use vkrender::vkrender::VkRender;
+use vkrender::vk::vkrender::VkRender;
 use xpbd::controller_message::ControllerMessage;
 use xpbd::pworld::PWorld;
 
