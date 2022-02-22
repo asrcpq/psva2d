@@ -22,7 +22,7 @@ use vulkano::sync::GpuFuture;
 use winit::window::Window;
 
 use crate::shader;
-use crate::vertex::{Vertex, VertexWf};
+use crate::vertex::{Vertex, VertexText, VertexWf};
 use material::face::TextureData;
 
 pub type VkwInstance = Arc<Instance>;
@@ -34,8 +34,9 @@ pub type VkwImages<W> = Vec<Arc<SwapchainImage<W>>>;
 pub type VkwTextureSet = Arc<PersistentDescriptorSet>;
 pub type VkwPipeline = Arc<GraphicsPipeline>;
 pub type VkwTexCoords = Vec<Vec<[f32; 2]>>;
-pub type VkwFuture = Option<Box<dyn GpuFuture>>;
+pub type VkwFuture = Box<dyn GpuFuture>;
 pub type VkwRenderPass = Arc<RenderPass>;
+pub type VkwFramebuffer = Arc<Framebuffer>;
 
 pub fn get_device_and_queue<W>(
 	instance: &VkwInstance,
@@ -152,6 +153,20 @@ pub fn get_pipelines(
 		.build(device.clone())
 		.unwrap();
 
+	let vs_text = shader::vs_text::load(device.clone()).unwrap();
+	let fs_text = shader::fs_text::load(device.clone()).unwrap();
+	let pipeline_text = GraphicsPipeline::start()
+		.vertex_input_state(BuffersDefinition::new().vertex::<VertexText>())
+		.vertex_shader(vs_text.entry_point("main").unwrap(), ())
+		.input_assembly_state(
+			InputAssemblyState::new().topology(PrimitiveTopology::TriangleList),
+		)
+		.viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
+		.fragment_shader(fs_text.entry_point("main").unwrap(), ())
+		.render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
+		.build(device.clone())
+		.unwrap();
+
 	let vs_wf = shader::vs_wf::load(device.clone()).unwrap();
 	let fs_wf = shader::fs_wf::load(device.clone()).unwrap();
 	let pipeline_wf = GraphicsPipeline::start()
@@ -166,7 +181,49 @@ pub fn get_pipelines(
 		.build(device)
 		.unwrap();
 
-	vec![pipeline, pipeline_wf]
+	vec![pipeline, pipeline_text, pipeline_wf]
+}
+
+pub fn get_text_texture(
+	device: VkwDevice,
+	queue: VkwQueue,
+	pipeline: VkwPipeline,
+) -> Arc<PersistentDescriptorSet> {
+	let (texture, tex_future) = {
+		let dimensions = ImageDimensions::Dim2d {
+			width: 1024,
+			height: 1024,
+			array_layers: 1,
+		};
+		#[allow(clippy::needless_collect)]
+		let array = image::open("assets/images/font.png")
+			.unwrap()
+			.into_luma8()
+			.into_raw();
+		let (image, future) = ImmutableImage::from_iter(
+			array.into_iter(),
+			dimensions,
+			MipmapsCount::One,
+			Format::R8_UNORM,
+			queue,
+		)
+		.unwrap();
+		let image_view = ImageView::start(image)
+			.ty(ImageViewType::Dim2d)
+			.build()
+			.unwrap();
+		(image_view, future)
+	};
+
+	let sampler = Sampler::simple_repeat_linear(device).unwrap();
+	let layout = pipeline.layout().descriptor_set_layouts().get(1).unwrap();
+	let texture_set = PersistentDescriptorSet::new(
+		layout.clone(),
+		[WriteDescriptorSet::image_view_sampler(0, texture, sampler)],
+	)
+	.unwrap();
+	tex_future.flush().unwrap();
+	texture_set
 }
 
 pub fn get_textures(
@@ -174,7 +231,7 @@ pub fn get_textures(
 	device: VkwDevice,
 	queue: VkwQueue,
 	pipeline: VkwPipeline,
-) -> (Arc<PersistentDescriptorSet>, VkwTexCoords, VkwFuture) {
+) -> (Arc<PersistentDescriptorSet>, VkwTexCoords) {
 	let tex_len = textures.len() as u32;
 	let (arrays, tex_coords): (Vec<Vec<u8>>, Vec<Vec<[f32; 2]>>) = textures
 		.into_iter()
@@ -218,15 +275,15 @@ pub fn get_textures(
 		[WriteDescriptorSet::image_view_sampler(0, texture, sampler)],
 	)
 	.unwrap();
-	let previous_frame_end = Some(tex_future.boxed());
-	(texture_set, tex_coords, previous_frame_end)
+	tex_future.flush().unwrap();
+	(texture_set, tex_coords)
 }
 
 pub fn window_size_dependent_setup(
 	render_pass: Arc<RenderPass>,
 	images: &[Arc<SwapchainImage<Window>>],
 	viewport: &mut Viewport,
-) -> Vec<Arc<Framebuffer>> {
+) -> Vec<VkwFramebuffer> {
 	let dimensions = images[0].dimensions().width_height();
 	viewport.dimensions = [dimensions[0] as f32, dimensions[1] as f32];
 

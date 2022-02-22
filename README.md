@@ -1,6 +1,8 @@
 # Todo:
 
-* show fps(status bar)
+* text texture generation
+
+* render to images/video/gif
 
 * wf plot distance constraint(in another color)
 

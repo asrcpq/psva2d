@@ -108,8 +108,12 @@ impl PWorld {
 
 	pub fn pr_model(&self) -> PrModel {
 		let ps = self.pg.pr_particles();
-		let cs: Vec<PrConstraint> =
-			self.constraints.iter().map(|x| x.render()).collect();
+		let cs: Vec<PrConstraint> = self
+			.constraints
+			.iter()
+			.chain(self.tmp_constraints.iter())
+			.map(|x| x.render())
+			.collect();
 		PrModel {
 			particles: ps,
 			constraints: cs,
