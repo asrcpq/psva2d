@@ -64,8 +64,6 @@ impl DistanceConstraint {
 		}
 	}
 
-	
-
 	pub fn repulsive_only(mut self) -> Self {
 		self.ty = DCTy::Repulsive;
 		self

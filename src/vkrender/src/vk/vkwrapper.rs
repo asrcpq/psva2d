@@ -1,13 +1,14 @@
 use std::sync::Arc;
-use vulkano::command_buffer::PrimaryCommandBuffer;
+use vulkano::command_buffer::{
+	AutoCommandBufferBuilder, PrimaryAutoCommandBuffer,
+};
 use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::device::physical::{PhysicalDevice, PhysicalDeviceType};
 use vulkano::device::{Device, DeviceExtensions, Features, Queue};
 use vulkano::format::Format;
 use vulkano::image::view::{ImageView, ImageViewType};
 use vulkano::image::{
-	ImageDimensions, ImageUsage, ImmutableImage, MipmapsCount,
-	SwapchainImage,
+	ImageDimensions, ImageUsage, ImmutableImage, MipmapsCount, SwapchainImage,
 };
 use vulkano::instance::Instance;
 use vulkano::pipeline::graphics::input_assembly::{
@@ -26,11 +27,11 @@ use crate::shader;
 use crate::vertex::{Vertex, VertexText, VertexWf};
 use material::face::TextureData;
 
-pub type VkwCommandBuffer = Box<dyn PrimaryCommandBuffer>;
+pub type VkwCommandBuilder = AutoCommandBufferBuilder<PrimaryAutoCommandBuffer>;
 pub type VkwDevice = Arc<Device>;
 pub type VkwFramebuffer = Arc<Framebuffer>;
 pub type VkwFuture = Box<dyn GpuFuture>;
-pub type VkwImages<W> = Vec<Arc<SwapchainImage<W>>>;
+pub type VkwImages = Vec<Arc<SwapchainImage<Window>>>;
 pub type VkwInstance = Arc<Instance>;
 pub type VkwPipeline = Arc<GraphicsPipeline>;
 pub type VkwQueue = Arc<Queue>;
@@ -98,7 +99,7 @@ pub fn get_swapchain_and_images(
 	device: VkwDevice,
 	queue: VkwQueue,
 	surface: VkwSurface<Window>,
-) -> (VkwSwapchain<Window>, VkwImages<Window>) {
+) -> (VkwSwapchain<Window>, VkwImages) {
 	let caps = surface.capabilities(physical_device).unwrap();
 	let composite_alpha = caps.supported_composite_alpha.iter().next().unwrap();
 	let format = caps.supported_formats[0].0;
@@ -311,7 +312,7 @@ pub fn get_textures(
 
 pub fn window_size_dependent_setup(
 	render_pass: VkwRenderPass,
-	images: &VkwImages<Window>,
+	images: &VkwImages,
 ) -> Vec<VkwFramebuffer> {
 	images
 		.iter()

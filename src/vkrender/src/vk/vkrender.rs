@@ -1,63 +1,40 @@
-use std::sync::Arc;
-use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer, TypedBufferAccess};
-use vulkano::command_buffer::{
-	AutoCommandBufferBuilder, CommandBufferUsage, PrimaryAutoCommandBuffer,
-	SubpassContents,
-};
-use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
-use vulkano::format::ClearValue;
+use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage};
 use vulkano::image::ImageAccess;
 use vulkano::pipeline::graphics::viewport::Viewport;
-use vulkano::pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint};
 use vulkano::swapchain::{self, AcquireError, SwapchainCreationError};
 use vulkano::sync::{self, FlushError, GpuFuture};
 use winit::event_loop::EventLoopWindowTarget;
 
-use crate::camera::Camera;
-use crate::shader;
-use crate::vertex::{Vertex, VertexText, VertexWf};
 use super::vkstatic::vks::Vks;
 use super::vkstatic::vks_overlay::VksOverlay;
 use super::vkstatic::vks_world::VksWorld;
-use super::vkwrapper::{
-	window_size_dependent_setup, VkwCommandBuffer, VkwPipeline, VkwTextureSet,
-};
+use super::vkwrapper::*;
+use crate::camera::Camera;
 use material::face::TextureData;
-use material::render_model::RenderModel;
 use material::texture_indexer::TextureIndexerRef;
 use protocol::pr_model::PrModel;
 
-type VertexBuffer<V> = Arc<CpuAccessibleBuffer<[V]>>;
-type VertexBuffers<V> = Vec<(i32, VertexBuffer<V>)>;
-
-#[derive(PartialEq)]
-pub enum VkRenderMode {
-	Normal,
-	Wireframe,
-}
-
 pub struct VkRender {
-	pub recreate_swapchain: bool,
-	render_mode: VkRenderMode,
+	recreate_swapchain: bool,
 	viewport: Viewport,
-	text_scaler: f32,
-	text_color: [f32; 4],
-	text: Vec<u8>,
-	indexer: TextureIndexerRef,
+	previous_frame_end: Option<VkwFuture>,
 
-	v: Vks,
+	vks: Vks,
 	r_world: VksWorld,
 	r_overlay: VksOverlay,
 }
 
 impl VkRender {
 	pub fn set_text(&mut self, text: Vec<u8>, bad: bool) {
-		self.text = text;
-		if bad {
-			self.text_color = [1.0, 0.0, 0.0, 1.0];
-		} else {
-			self.text_color = [0.7, 0.8, 0.7, 1.0];
-		}
+		self.r_overlay.set_text(text, bad);
+	}
+
+	pub fn flush_swapchain(&mut self) {
+		self.recreate_swapchain = true;
+	}
+
+	pub fn toggle_render_mode(&mut self) {
+		self.r_world.toggle_render_mode();
 	}
 
 	pub fn new<E>(
@@ -71,291 +48,32 @@ impl VkRender {
 			dimensions: [window_size[0] as f32, window_size[1] as f32],
 			depth_range: 0.0..1.0,
 		};
-		let v = Vks::new(el, window_size);
-		let r_world = VksWorld::new(&v, textures);
-		let r_overlay = VksOverlay::new(&v);
+		let vks = Vks::new(el, window_size);
+		let r_world = VksWorld::new(vks.clone(), textures, indexer);
+		let r_overlay = VksOverlay::new(vks.clone());
+		let previous_frame_end = Some(sync::now(vks.device.clone()).boxed());
 		Self {
 			recreate_swapchain: false,
-			render_mode: VkRenderMode::Normal,
 			viewport,
-			text_scaler: 1.0,
-			text: b"hello, world".to_vec(),
-			text_color: [1.0, 0.0, 0.0, 1.0],
-			indexer,
-			v,
+			vks,
 			r_world,
 			r_overlay,
+			previous_frame_end,
 		}
-	}
-
-	pub fn toggle_render_mode(&mut self) {
-		if self.render_mode == VkRenderMode::Normal {
-			self.render_mode = VkRenderMode::Wireframe;
-		} else {
-			self.render_mode = VkRenderMode::Normal;
-		}
-	}
-
-	pub fn get_pipeline(&self) -> Arc<GraphicsPipeline> {
-		if self.render_mode == VkRenderMode::Normal {
-			self.r_world.pipeline.clone()
-		} else {
-			self.r_world.pipeline_wf.clone()
-		}
-	}
-
-	fn generate_vertex_buffers(
-		&self,
-		render_model: &RenderModel,
-	) -> VertexBuffers<Vertex> {
-		let mut vertex_buffers = vec![];
-		for (&id, face_group) in &render_model.face_groups {
-			if id < 0 || id >= self.r_world.tex_coords.len() as i32 {
-				continue;
-			}
-			let vertex_buffer = CpuAccessibleBuffer::from_iter(
-				self.v.device.clone(),
-				BufferUsage::all(),
-				false,
-				face_group
-					.faces
-					.iter()
-					.map(|x| {
-						(0..3).map(|i| Vertex {
-							pos: *render_model.vs.get(&x.vid[i]).unwrap(),
-							tex_coord: self.r_world.tex_coords[id as usize]
-								[x.uvid[i]],
-						})
-					})
-					.flatten()
-					.collect::<Vec<_>>()
-					.into_iter(),
-			)
-			.unwrap();
-			vertex_buffers.push((id, vertex_buffer));
-		}
-		vertex_buffers
-	}
-
-	fn generate_vertex_wf_buffer(
-		&self,
-		pr_model: &PrModel,
-	) -> VertexBuffer<VertexWf> {
-		let mut vertices = vec![];
-		let color1 = [0.0, 0.0, 1.0, 0.5];
-		let color2 = [0.0, 1.0, 0.0, 0.0];
-		for constraint in &pr_model.constraints {
-			let mut positions = vec![];
-			for &pid in constraint.particles.iter() {
-				if let Some(p) = pr_model.particles.get(&pid) {
-					positions.push(p.pos);
-				} else {
-					eprintln!("ERROR: vkrender found that pr model is broken");
-				}
-			}
-			if positions.len() == 2 {
-				if constraint.id != -1 && constraint.id != -2 {
-					eprintln!(
-						"WARNING: unknown constraint id {}",
-						constraint.id
-					);
-				}
-				vertices.extend(vec![0, 1].into_iter().map(|i| VertexWf {
-					color: if constraint.id == -1 { color1 } else { color2 },
-					pos: positions[i],
-				}));
-			} else if positions.len() != 3 {
-				eprintln!(
-					"ERROR: found constraint contains {} particles",
-					positions.len()
-				);
-			}
-		}
-		CpuAccessibleBuffer::from_iter(
-			self.v.device.clone(),
-			BufferUsage::all(),
-			false,
-			vertices.into_iter(),
-		)
-		.unwrap()
-	}
-
-	fn build_command(
-		&self,
-		image_num: usize,
-		pipeline: VkwPipeline,
-		set: VkwTextureSet,
-		pr_model: &PrModel,
-	) -> PrimaryAutoCommandBuffer {
-		let mut builder = AutoCommandBufferBuilder::primary(
-			self.v.device.clone(),
-			self.v.queue.family(),
-			CommandBufferUsage::OneTimeSubmit,
-		)
-		.unwrap();
-
-		let clear_values = vec![[0.0, 0.0, 0.0, 1.0].into()];
-		builder
-			.begin_render_pass(
-				self.r_world.framebuffers[image_num].clone(),
-				SubpassContents::Inline,
-				clear_values,
-			)
-			.unwrap()
-			.set_viewport(0, [self.viewport.clone()])
-			.bind_pipeline_graphics(pipeline.clone());
-
-		if self.render_mode == VkRenderMode::Normal {
-			let render_model = self.indexer.borrow().compile_model(pr_model);
-			let vertex_buffers = self.generate_vertex_buffers(&render_model);
-			builder.bind_descriptor_sets(
-				PipelineBindPoint::Graphics,
-				pipeline.layout().clone(),
-				0,
-				vec![set, self.r_world.texture_set.clone()],
-			);
-			for (id, vertex_buffer) in vertex_buffers.into_iter() {
-				let push_constants =
-					shader::fs::ty::PushConstants { layer: id };
-				builder.push_constants(
-					pipeline.layout().clone(),
-					0,
-					push_constants,
-				);
-				let buflen = vertex_buffer.len();
-				builder
-					.bind_vertex_buffers(0, vertex_buffer)
-					.draw(buflen as u32, 1, 0, 0)
-					.unwrap();
-			}
-		} else {
-			let vertex_buffer = self.generate_vertex_wf_buffer(pr_model);
-			let buflen = vertex_buffer.len();
-			builder
-				.bind_descriptor_sets(
-					PipelineBindPoint::Graphics,
-					pipeline.layout().clone(),
-					0,
-					set,
-				)
-				.bind_vertex_buffers(0, vertex_buffer)
-				.draw(buflen as u32, 1, 0, 0)
-				.unwrap();
-		}
-		builder.end_render_pass().unwrap();
-
-		let mut coord_list = vec![];
-		let mut pos_list = vec![];
-		let w = 16;
-		let h = 32;
-		let size_x = 1024 / w;
-		// let size_y = 1024 / h;
-		for (idx, &ch) in self.text.iter().enumerate() {
-			let idx = idx as u32;
-			let ux = ch as u32 % size_x;
-			let uy = ch as u32 / size_x;
-			let upos_list =
-				vec![[0, 0], [0, 1], [1, 1], [0, 0], [1, 0], [1, 1]];
-			coord_list.extend(upos_list.iter().map(|upos| {
-				[
-					((ux + upos[0]) * w) as f32 / 1024f32,
-					((uy + upos[1]) * h) as f32 / 1024f32,
-				]
-			}));
-			pos_list.extend(upos_list.iter().map(|upos| {
-				[
-					-1.0 + ((idx + upos[0]) * w) as f32
-						/ self.viewport.dimensions[0]
-						* self.text_scaler,
-					-1.0 + (upos[1] * h) as f32
-						/ self.viewport.dimensions[1]
-						* self.text_scaler,
-				]
-			}));
-		}
-		let vertex_buffer = pos_list
-			.into_iter()
-			.zip(coord_list.into_iter())
-			.map(|(p, c)| VertexText {
-				color: self.text_color,
-				pos: p,
-				tex_coord: c,
-			});
-		let vertex_buffer = CpuAccessibleBuffer::from_iter(
-			self.v.device.clone(),
-			BufferUsage::all(),
-			false,
-			vertex_buffer,
-		)
-		.unwrap();
-
-		builder
-			.begin_render_pass(
-				self.r_overlay.framebuffers[image_num].clone(),
-				SubpassContents::Inline,
-				vec![ClearValue::None],
-			)
-			.unwrap()
-			.set_viewport(0, [self.viewport.clone()])
-			.bind_pipeline_graphics(self.r_overlay.pipeline_text.clone());
-
-		builder.bind_descriptor_sets(
-			PipelineBindPoint::Graphics,
-			self.r_overlay.pipeline_text.layout().clone(),
-			0,
-			self.r_overlay.texture_set_text.clone(),
-		);
-		let buflen = vertex_buffer.len();
-		builder
-			.bind_vertex_buffers(0, vertex_buffer)
-			.draw(buflen as u32, 1, 0, 0)
-			.unwrap();
-
-		builder.end_render_pass().unwrap();
-		builder.build().unwrap()
-	}
-
-	fn render_world(
-		&self,
-		image_num: usize,
-		pr_model: &PrModel,
-		camera: Camera,
-	) -> VkwCommandBuffer {
-		let uniform_buffer = CpuAccessibleBuffer::from_data(
-			self.v.device.clone(),
-			BufferUsage::uniform_buffer(),
-			false,
-			camera,
-		)
-		.unwrap();
-
-		let pipeline = self.get_pipeline();
-		let layout = pipeline.layout().descriptor_set_layouts().get(0).unwrap();
-		let set = PersistentDescriptorSet::new(
-			layout.clone(),
-			[WriteDescriptorSet::buffer(0, uniform_buffer)],
-		)
-		.unwrap();
-
-		let command_buffer =
-			self.build_command(image_num, pipeline, set, pr_model);
-		Box::new(command_buffer)
 	}
 
 	pub fn render(&mut self, pr_model: &PrModel, camera: Camera) {
-		self.v
-			.previous_frame_end
-			.as_mut()
-			.unwrap()
-			.cleanup_finished();
+		self.previous_frame_end.as_mut().unwrap().cleanup_finished();
 		if self.recreate_swapchain {
 			self.create_swapchain();
 			self.recreate_swapchain = false;
 		}
 
 		let (image_num, suboptimal, acquire_future) =
-			match swapchain::acquire_next_image(self.v.swapchain.clone(), None)
-			{
+			match swapchain::acquire_next_image(
+				self.vks.swapchain.clone(),
+				None,
+			) {
 				Ok(r) => r,
 				Err(AcquireError::OutOfDate) => {
 					self.recreate_swapchain = true;
@@ -369,67 +87,85 @@ impl VkRender {
 			self.recreate_swapchain = true;
 		}
 
-		let command_buffer = self.render_world(image_num, pr_model, camera);
+		let mut builder = AutoCommandBufferBuilder::primary(
+			self.vks.device.clone(),
+			self.vks.queue.family(),
+			CommandBufferUsage::OneTimeSubmit,
+		)
+		.unwrap();
+		self.r_world.build_command(
+			&mut builder,
+			image_num,
+			pr_model,
+			camera,
+			self.viewport.clone(),
+		);
+		self.r_overlay.build_command(
+			&mut builder,
+			image_num,
+			self.viewport.clone(),
+		);
+		let command_buffer = Box::new(builder.build().unwrap());
 
 		let future = self
-			.v
 			.previous_frame_end
 			.take()
 			.unwrap()
 			.join(acquire_future)
-			.then_execute(self.v.queue.clone(), command_buffer)
+			.then_execute(self.vks.queue.clone(), command_buffer)
 			.unwrap()
 			.then_swapchain_present(
-				self.v.queue.clone(),
-				self.v.swapchain.clone(),
+				self.vks.queue.clone(),
+				self.vks.swapchain.clone(),
 				image_num,
 			)
 			.then_signal_fence_and_flush();
 
 		match future {
 			Ok(future) => {
-				self.v.previous_frame_end = Some(future.boxed());
+				self.previous_frame_end = Some(future.boxed());
 			}
 			Err(FlushError::OutOfDate) => {
 				self.recreate_swapchain = true;
-				self.v.previous_frame_end =
-					Some(sync::now(self.v.device.clone()).boxed());
+				self.previous_frame_end =
+					Some(sync::now(self.vks.device.clone()).boxed());
 			}
 			Err(e) => {
 				println!("Failed to flush future: {:?}", e);
-				self.v.previous_frame_end =
-					Some(sync::now(self.v.device.clone()).boxed());
+				self.previous_frame_end =
+					Some(sync::now(self.vks.device.clone()).boxed());
 			}
 		}
 	}
 
 	fn create_swapchain(&mut self) {
 		eprintln!("Recreate swapchain");
-		let dimensions: [u32; 2] = self.v.surface.window().inner_size().into();
-		self.text_scaler = self.v.surface.window().scale_factor() as f32;
-		let (new_swapchain, new_images) =
-			match self.v.swapchain.recreate().dimensions(dimensions).build() {
-				Ok(r) => r,
-				Err(SwapchainCreationError::UnsupportedDimensions) => {
-					eprintln!("Error: unsupported dimensions");
-					return;
-				}
-				Err(e) => {
-					panic!("Failed to recreate swapchain: {:?}", e)
-				}
-			};
-		self.v.swapchain = new_swapchain;
+		let dimensions: [u32; 2] =
+			self.vks.surface.window().inner_size().into();
+		self.r_overlay
+			.set_text_scaler(self.vks.surface.window().scale_factor() as f32);
+		let (new_swapchain, new_images) = match self
+			.vks
+			.swapchain
+			.recreate()
+			.dimensions(dimensions)
+			.build()
+		{
+			Ok(r) => r,
+			Err(SwapchainCreationError::UnsupportedDimensions) => {
+				eprintln!("Error: unsupported dimensions");
+				return;
+			}
+			Err(e) => {
+				panic!("Failed to recreate swapchain: {:?}", e)
+			}
+		};
+		self.vks.swapchain = new_swapchain;
 
 		let dimensions = new_images[0].dimensions().width_height();
 		self.viewport.dimensions = [dimensions[0] as f32, dimensions[1] as f32];
-		self.r_world.framebuffers = window_size_dependent_setup(
-			self.r_world.render_pass.clone(),
-			&new_images,
-		);
-		self.r_overlay.framebuffers = window_size_dependent_setup(
-			self.r_overlay.render_pass.clone(),
-			&new_images,
-		);
-		self.v.images = new_images;
+		self.r_world.update_framebuffers(&new_images);
+		self.r_overlay.update_framebuffers(&new_images);
+		self.vks.images = new_images;
 	}
 }
