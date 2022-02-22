@@ -40,7 +40,8 @@ pub fn run(
 			WindowEvent::CloseRequested => {
 				*control_flow = ControlFlow::Exit;
 			}
-			WindowEvent::Resized(_) => {
+			WindowEvent::Resized(new_size) => {
+				view.resize([new_size.width, new_size.height]);
 				vkr.recreate_swapchain = true;
 			}
 			WindowEvent::KeyboardInput {
