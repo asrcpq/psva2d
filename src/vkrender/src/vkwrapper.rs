@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use vulkano::command_buffer::PrimaryCommandBuffer;
 use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::device::physical::{PhysicalDevice, PhysicalDeviceType};
 use vulkano::device::{Device, DeviceExtensions, Features, Queue};
@@ -37,6 +38,7 @@ pub type VkwTexCoords = Vec<Vec<[f32; 2]>>;
 pub type VkwFuture = Box<dyn GpuFuture>;
 pub type VkwRenderPass = Arc<RenderPass>;
 pub type VkwFramebuffer = Arc<Framebuffer>;
+pub type VkwCommandBuffer = Box<dyn PrimaryCommandBuffer>;
 
 pub fn get_device_and_queue<W>(
 	instance: &VkwInstance,

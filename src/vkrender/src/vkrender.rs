@@ -16,7 +16,7 @@ use crate::shader;
 use crate::vertex::{Vertex, VertexWf};
 use crate::vkstatic::VkStatic;
 use crate::vkwrapper::{
-	window_size_dependent_setup, VkwPipeline, VkwTextureSet,
+	window_size_dependent_setup, VkwCommandBuffer, VkwPipeline, VkwTextureSet,
 };
 use material::face::TextureData;
 use material::render_model::RenderModel;
@@ -219,7 +219,7 @@ impl VkRender {
 		builder.build().unwrap()
 	}
 
-	pub fn render(&mut self, pr_model: &PrModel, camera: Camera) {
+	fn render_world(&self, image_num: usize, pr_model: &PrModel, camera: Camera) -> VkwCommandBuffer {
 		let uniform_buffer = CpuAccessibleBuffer::from_data(
 			self.v.device.clone(),
 			BufferUsage::uniform_buffer(),
@@ -236,6 +236,13 @@ impl VkRender {
 		)
 		.unwrap();
 
+		let command_buffer =
+			self.build_command(image_num, pipeline, set, pr_model);
+
+		Box::new(command_buffer)
+	}
+
+	pub fn render(&mut self, pr_model: &PrModel, camera: Camera) {
 		self.v
 			.previous_frame_end
 			.as_mut()
@@ -262,8 +269,7 @@ impl VkRender {
 			self.recreate_swapchain = true;
 		}
 
-		let command_buffer =
-			self.build_command(image_num, pipeline, set, pr_model);
+		let command_buffer = self.render_world(image_num, pr_model, camera);
 
 		let future = self
 			.v
