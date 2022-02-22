@@ -68,7 +68,6 @@ impl DistanceConstraint {
 
 	pub fn repulsive_only(mut self) -> Self {
 		self.ty = DCTy::Repulsive;
-		self.plas_thresh = 0.0;
 		self
 	}
 
@@ -147,7 +146,7 @@ impl Constraint for DistanceConstraint {
 		let compliance_t = self.compliance / dt.powi(2);
 		let dlambda =
 			(-dl - compliance_t * self.lambda) / (imass + compliance_t);
-		let correct = dlambda * dp.normalize();
+		let correct = dlambda * dp / l;
 		self.lambda += dlambda;
 
 		p1_mut.add_pos(correct * imass1);

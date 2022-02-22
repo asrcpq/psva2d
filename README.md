@@ -2,7 +2,7 @@
 
 * UI
 
-	* draw coordinate
+	* primitive(lines)(for box)
 
 	* show more info(particle/constraint len, max speed/limit, energy)
 
@@ -13,8 +13,6 @@
 * Physics
 
 	* remove radius, face collision
-
-	* plastic
 
 	* break
 
