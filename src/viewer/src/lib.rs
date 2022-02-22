@@ -24,6 +24,7 @@ pub fn run(
 	let mut view = View::default();
 	let elp: EventLoopProxy<UserEvent> = event_loop.create_proxy();
 	let mut update_flag = true;
+	let mut load_smoother = 0.0;
 	let (tx2, rx2) = channel();
 	let _ = std::thread::spawn(move || {
 		let (tx, rx) = channel();
@@ -84,6 +85,9 @@ pub fn run(
 		}
 		Event::UserEvent(user_event) => match user_event {
 			UserEvent::Update(pr_model, load) => {
+				load_smoother *= 0.8;
+				load_smoother += load * 0.2;
+				let load = load_smoother;
 				let fps_text =
 					format!("Load: {:.2}%", load * 100.).bytes().collect();
 				vkr.set_text(fps_text, load > 1.0);

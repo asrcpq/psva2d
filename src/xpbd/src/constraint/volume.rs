@@ -107,9 +107,9 @@ impl Constraint for VolumeConstraint {
 		let grad1 = V2::new(y2 - y0, x0 - x2);
 		let grad2 = V2::new(y0 - y1, x1 - x0);
 
-		let beta = imass0 * grad0.magnitude().powi(2)
-			+ imass1 * grad1.magnitude().powi(2)
-			+ imass2 * grad2.magnitude().powi(2);
+		let beta = imass0 * grad0.magnitude_squared()
+			+ imass1 * grad1.magnitude_squared()
+			+ imass2 * grad2.magnitude_squared();
 		let compliance_t = self.compliance / dt.powi(2);
 		let dlambda =
 			(-ds - compliance_t * self.lambda) / (beta + compliance_t);

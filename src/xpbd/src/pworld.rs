@@ -34,10 +34,10 @@ impl Default for PWorld {
 	fn default() -> Self {
 		let pg = ParticleGroup::default();
 		Self {
-			dt: 0.002,
-			ppr: 10,
+			dt: 0.005,
+			ppr: 5,
 			time_scale: 1.0,
-			iteration: 10,
+			iteration: 6,
 			forward_frames: -1,
 
 			pg,
