@@ -6,7 +6,7 @@ use vulkano::device::{Device, DeviceExtensions, Features, Queue};
 use vulkano::format::Format;
 use vulkano::image::view::{ImageView, ImageViewType};
 use vulkano::image::{
-	ImageAccess, ImageDimensions, ImageUsage, ImmutableImage, MipmapsCount,
+	ImageDimensions, ImageUsage, ImmutableImage, MipmapsCount,
 	SwapchainImage,
 };
 use vulkano::instance::Instance;
@@ -14,7 +14,7 @@ use vulkano::pipeline::graphics::input_assembly::{
 	InputAssemblyState, PrimitiveTopology,
 };
 use vulkano::pipeline::graphics::vertex_input::BuffersDefinition;
-use vulkano::pipeline::graphics::viewport::{Viewport, ViewportState};
+use vulkano::pipeline::graphics::viewport::ViewportState;
 use vulkano::pipeline::{GraphicsPipeline, Pipeline};
 use vulkano::render_pass::{Framebuffer, RenderPass, Subpass};
 use vulkano::sampler::Sampler;
@@ -26,19 +26,19 @@ use crate::shader;
 use crate::vertex::{Vertex, VertexText, VertexWf};
 use material::face::TextureData;
 
-pub type VkwInstance = Arc<Instance>;
-pub type VkwDevice = Arc<Device>;
-pub type VkwSurface<W> = Arc<Surface<W>>;
-pub type VkwQueue = Arc<Queue>;
-pub type VkwSwapchain<W> = Arc<Swapchain<W>>;
-pub type VkwImages<W> = Vec<Arc<SwapchainImage<W>>>;
-pub type VkwTextureSet = Arc<PersistentDescriptorSet>;
-pub type VkwPipeline = Arc<GraphicsPipeline>;
-pub type VkwTexCoords = Vec<Vec<[f32; 2]>>;
-pub type VkwFuture = Box<dyn GpuFuture>;
-pub type VkwRenderPass = Arc<RenderPass>;
-pub type VkwFramebuffer = Arc<Framebuffer>;
 pub type VkwCommandBuffer = Box<dyn PrimaryCommandBuffer>;
+pub type VkwDevice = Arc<Device>;
+pub type VkwFramebuffer = Arc<Framebuffer>;
+pub type VkwFuture = Box<dyn GpuFuture>;
+pub type VkwImages<W> = Vec<Arc<SwapchainImage<W>>>;
+pub type VkwInstance = Arc<Instance>;
+pub type VkwPipeline = Arc<GraphicsPipeline>;
+pub type VkwQueue = Arc<Queue>;
+pub type VkwRenderPass = Arc<RenderPass>;
+pub type VkwSurface<W> = Arc<Surface<W>>;
+pub type VkwSwapchain<W> = Arc<Swapchain<W>>;
+pub type VkwTexCoords = Vec<Vec<[f32; 2]>>;
+pub type VkwTextureSet = Arc<PersistentDescriptorSet>;
 
 pub fn get_device_and_queue<W>(
 	instance: &VkwInstance,
@@ -312,11 +312,7 @@ pub fn get_textures(
 pub fn window_size_dependent_setup(
 	render_pass: VkwRenderPass,
 	images: &VkwImages<Window>,
-	viewport: &mut Viewport,
 ) -> Vec<VkwFramebuffer> {
-	let dimensions = images[0].dimensions().width_height();
-	viewport.dimensions = [dimensions[0] as f32, dimensions[1] as f32];
-
 	images
 		.iter()
 		.map(|image| {
