@@ -23,7 +23,8 @@ use material::render_model::RenderModel;
 use material::texture_indexer::TextureIndexerRef;
 use protocol::pr_model::PrModel;
 
-type VertexBuffers<V> = Vec<(i32, Arc<CpuAccessibleBuffer<[V]>>)>;
+type VertexBuffer<V> = Arc<CpuAccessibleBuffer<[V]>>;
+type VertexBuffers<V> = Vec<(i32, VertexBuffer<V>)>;
 
 #[derive(PartialEq)]
 pub enum VkRenderMode {
@@ -110,34 +111,47 @@ impl VkRender {
 		vertex_buffers
 	}
 
-	fn generate_vertex_wf_buffers(
+	fn generate_vertex_wf_buffer(
 		&self,
-		render_model: &RenderModel,
-	) -> VertexBuffers<VertexWf> {
-		let mut vertex_buffers = vec![];
-		for (&id, face_group) in &render_model.face_groups {
-			let vertex_buffer = CpuAccessibleBuffer::from_iter(
-				self.v.device.clone(),
-				BufferUsage::all(),
-				false,
-				face_group
-					.faces
-					.iter()
-					.flat_map(|x| {
-						vec![0, 1, 1, 2, 2, 0]
-							.into_iter()
-							.map(|i| VertexWf {
-								color: [1.0, 0.0, 0.0, 1.0],
-								pos: *render_model.vs.get(&x.vid[i]).unwrap(),
-							})
-					})
-					.collect::<Vec<_>>()
-					.into_iter(),
-			)
-			.unwrap();
-			vertex_buffers.push((id, vertex_buffer));
+		pr_model: &PrModel,
+	) -> VertexBuffer<VertexWf> {
+		let mut vertices = vec![];
+		let color1 = [0.0, 0.0, 1.0, 0.5];
+		let color2 = [0.0, 1.0, 0.0, 0.0];
+		for constraint in &pr_model.constraints {
+			let mut positions = vec![];
+			for &pid in constraint.particles.iter() {
+				if let Some(p) = pr_model.particles.get(&pid) {
+					positions.push(p.pos);
+				} else {
+					eprintln!("ERROR: vkrender found that pr model is broken");
+				}
+			}
+			if positions.len() == 2 {
+				if constraint.id != -1 && constraint.id != -2 {
+					eprintln!(
+						"WARNING: unknown constraint id {}",
+						constraint.id
+					);
+				}
+				vertices.extend(vec![0, 1].into_iter().map(|i| VertexWf {
+					color: if constraint.id == -1 { color1 } else { color2 },
+					pos: positions[i],
+				}));
+			} else if positions.len() != 3 {
+				eprintln!(
+					"ERROR: found constraint contains {} particles",
+					positions.len()
+				);
+			}
 		}
-		vertex_buffers
+		CpuAccessibleBuffer::from_iter(
+			self.v.device.clone(),
+			BufferUsage::all(),
+			false,
+			vertices.into_iter(),
+		)
+		.unwrap()
 	}
 
 	fn build_command(
@@ -145,7 +159,7 @@ impl VkRender {
 		image_num: usize,
 		pipeline: VkwPipeline,
 		set: VkwTextureSet,
-		render_model: &RenderModel,
+		pr_model: &PrModel,
 	) -> PrimaryAutoCommandBuffer {
 		let mut builder = AutoCommandBufferBuilder::primary(
 			self.v.device.clone(),
@@ -166,7 +180,8 @@ impl VkRender {
 			.bind_pipeline_graphics(pipeline.clone());
 
 		if self.render_mode == VkRenderMode::Normal {
-			let vertex_buffers = self.generate_vertex_buffers(render_model);
+			let render_model = self.indexer.borrow().compile_model(pr_model);
+			let vertex_buffers = self.generate_vertex_buffers(&render_model);
 			builder.bind_descriptor_sets(
 				PipelineBindPoint::Graphics,
 				pipeline.layout().clone(),
@@ -187,19 +202,17 @@ impl VkRender {
 					.unwrap();
 			}
 		} else {
-			let vertex_buffers = self.generate_vertex_wf_buffers(render_model);
-			builder.bind_descriptor_sets(
-				PipelineBindPoint::Graphics,
-				pipeline.layout().clone(),
-				0,
-				set,
-			);
-			for (_, vertex_buffer) in vertex_buffers.into_iter() {
-				builder
-					.bind_vertex_buffers(0, vertex_buffer.clone())
-					.draw(vertex_buffer.len() as u32, 1, 0, 0)
-					.unwrap();
-			}
+			let vertex_buffer = self.generate_vertex_wf_buffer(pr_model);
+			builder
+				.bind_descriptor_sets(
+					PipelineBindPoint::Graphics,
+					pipeline.layout().clone(),
+					0,
+					set,
+				)
+				.bind_vertex_buffers(0, vertex_buffer.clone())
+				.draw(vertex_buffer.len() as u32, 1, 0, 0)
+				.unwrap();
 		}
 
 		builder.end_render_pass().unwrap();
@@ -207,7 +220,6 @@ impl VkRender {
 	}
 
 	pub fn render(&mut self, pr_model: &PrModel, camera: Camera) {
-		let render_model = self.indexer.borrow().compile_model(&pr_model);
 		let uniform_buffer = CpuAccessibleBuffer::from_data(
 			self.v.device.clone(),
 			BufferUsage::uniform_buffer(),
@@ -251,7 +263,7 @@ impl VkRender {
 		}
 
 		let command_buffer =
-			self.build_command(image_num, pipeline, set, &render_model);
+			self.build_command(image_num, pipeline, set, pr_model);
 
 		let future = self
 			.v

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use vulkano::instance::Instance;
 use vulkano::pipeline::graphics::viewport::Viewport;
-use vulkano::render_pass::{Framebuffer, RenderPass};
-use vulkano::sync::GpuFuture;
+use vulkano::render_pass::RenderPass;
+use vulkano::sync::{self, GpuFuture};
 use vulkano::Version;
 use vulkano_win::VkSurfaceBuild;
 use winit::dpi::{LogicalSize, Size};
@@ -17,12 +17,14 @@ pub struct VkStatic {
 	pub queue: VkwQueue,
 	pub surface: VkwSurface<Window>,
 	pub swapchain: VkwSwapchain<Window>,
-	pub framebuffers: Vec<Arc<Framebuffer>>,
-	pub previous_frame_end: Option<Box<dyn GpuFuture>>,
+	pub framebuffers: Vec<VkwFramebuffer>,
+	pub previous_frame_end: Option<VkwFuture>,
 	pub pipeline: VkwPipeline,
+	pub pipeline_text: VkwPipeline,
 	pub pipeline_wf: VkwPipeline,
 	pub render_pass: Arc<RenderPass>,
 	pub texture_set: VkwTextureSet,
+	pub texture_set_text: VkwTextureSet,
 	pub tex_coords: VkwTexCoords,
 }
 
@@ -60,17 +62,23 @@ impl VkStatic {
 		let render_pass = get_render_pass(device.clone(), swapchain.clone());
 		let pipelines = get_pipelines(render_pass.clone(), device.clone());
 		let pipeline = pipelines[0].clone();
-		let pipeline_wf = pipelines[1].clone();
+		let pipeline_text = pipelines[1].clone();
+		let pipeline_wf = pipelines[2].clone();
 
 		let framebuffers =
 			window_size_dependent_setup(render_pass.clone(), &images, viewport);
-		let (texture_set, tex_coords, previous_frame_end) = get_textures(
+		let (texture_set, tex_coords) = get_textures(
 			textures,
 			device.clone(),
 			queue.clone(),
 			pipeline.clone(),
 		);
-
+		let texture_set_text = get_text_texture(
+			device.clone(),
+			queue.clone(),
+			pipeline_text.clone(),
+		);
+		let previous_frame_end = Some(sync::now(device.clone()).boxed());
 		Self {
 			device,
 			queue,
@@ -79,9 +87,11 @@ impl VkStatic {
 			framebuffers,
 			previous_frame_end,
 			pipeline,
+			pipeline_text,
 			pipeline_wf,
 			render_pass,
 			texture_set,
+			texture_set_text,
 			tex_coords,
 		}
 	}
