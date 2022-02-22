@@ -43,7 +43,7 @@ pub fn run(
 			}
 			WindowEvent::Resized(new_size) => {
 				view.resize([new_size.width, new_size.height]);
-				vkr.recreate_swapchain = true;
+				vkr.flush_swapchain();
 				update_flag = true;
 			}
 			WindowEvent::KeyboardInput {

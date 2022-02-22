@@ -1,5 +1,4 @@
 use vulkano::instance::Instance;
-use vulkano::sync::{self, GpuFuture};
 use vulkano::Version;
 use vulkano_win::VkSurfaceBuild;
 use winit::dpi::{LogicalSize, Size};
@@ -8,13 +7,13 @@ use winit::window::{Window, WindowBuilder};
 
 use crate::vk::vkwrapper::*;
 
+#[derive(Clone)]
 pub struct Vks {
 	pub device: VkwDevice,
 	pub queue: VkwQueue,
 	pub surface: VkwSurface<Window>,
 	pub swapchain: VkwSwapchain<Window>,
-	pub images: VkwImages<Window>,
-	pub previous_frame_end: Option<VkwFuture>,
+	pub images: VkwImages,
 }
 
 fn winit_size(size: [u32; 2]) -> Size {
@@ -45,14 +44,12 @@ impl Vks {
 			queue.clone(),
 			surface.clone(),
 		);
-		let previous_frame_end = Some(sync::now(device.clone()).boxed());
 		Self {
 			device,
 			queue,
 			surface,
 			swapchain,
 			images,
-			previous_frame_end,
 		}
 	}
 }
