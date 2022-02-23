@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::constraint::distance::DistanceConstraint;
 use crate::constraint::Constraint;
 use crate::particle::PRef;
+use crate::pos_box::PosBox;
 use crate::{C2, V2};
 use protocol::pr_model::PrParticle;
 
@@ -13,6 +14,7 @@ pub struct ParticleGroup {
 	shp: HashMap<C2, Vec<PRef>>,
 	data: HashMap<usize, PRef>,
 	speed_limit_k: f32,
+	pos_box: PosBox,
 }
 
 impl Default for ParticleGroup {
@@ -24,6 +26,12 @@ impl Default for ParticleGroup {
 			data: HashMap::new(),
 			// particle cannot move more than k * csize in dt
 			speed_limit_k: 0.7,
+			pos_box: PosBox {
+				xmin: -5.0,
+				xmax: 5.0,
+				ymin: -10.0,
+				ymax: 0.0,
+			}
 		}
 	}
 }
@@ -35,13 +43,8 @@ impl ParticleGroup {
 			let pos = {
 				let mut locked = pref.try_lock().unwrap();
 				locked.update(dt, self.speed_limit_k * self.csize);
-				// sticky ground, just for debugging
-				if locked.pos[1] > 0. {
-					// locked.pos[1] = -locked.pos[1];
-					// locked.ppos[1] = -locked.ppos[1];
-					locked.pos[1] = 0.;
-					locked.ppos[1] = 0.;
-					locked.ppos[0] = locked.pos[0];
+				if self.pos_box.apply(&mut locked.pos) {
+					locked.ppos = locked.pos;
 				}
 				locked.pos
 			};
