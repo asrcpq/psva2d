@@ -1,11 +1,12 @@
 pub mod constraint_template;
 pub mod distance;
+pub mod leash;
 pub mod volume;
 
 mod particle_list;
 
-use crate::V2;
 use crate::particle::PRef;
+use crate::V2;
 use protocol::pr_model::PrConstraint;
 
 pub trait Constraint: dyn_clone::DynClone + Send {

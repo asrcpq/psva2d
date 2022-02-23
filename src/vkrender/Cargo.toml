@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-nalgebra = "^0.30"
+nalgebra = "0.30"
 vulkano = "0.28"
 vulkano-shaders = "0.28"
 vulkano-win = "0.28"
-winit = "^0.26"
-image = "^0.24"
+winit = "0.26"
+image = "0.24"
 
 protocol = {path = "../protocol"}
 xpbd = {path = "../xpbd"}

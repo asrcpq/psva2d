@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use std::sync::mpsc::{Receiver, Sender};
 
 use crate::constraint::constraint_template::ConstraintTemplate;
 use crate::constraint::distance::DistanceConstraint;
+use crate::constraint::leash::LeashConstraint;
 use crate::constraint::volume::VolumeConstraint;
 use crate::constraint::Constraint;
 use crate::controller_message::ControllerMessage;
@@ -12,6 +14,7 @@ use crate::posbox::Posbox;
 use crate::V2;
 use protocol::pr_model::PrConstraint;
 use protocol::pr_model::PrModel;
+use protocol::user_event::UpdateInfo;
 use protocol::user_event::UserEvent;
 use timer::Timer;
 
@@ -29,6 +32,7 @@ pub struct PWorld {
 	pg: ParticleGroup,
 	constraints: Vec<Box<dyn Constraint>>,
 	tmp_constraints: Vec<Box<dyn Constraint>>,
+	marionette_constraints: HashMap<usize, Box<dyn Constraint>>,
 
 	print_perf: bool,
 }
@@ -46,6 +50,7 @@ impl Default for PWorld {
 			pg,
 			constraints: Vec::new(),
 			tmp_constraints: Vec::new(),
+			marionette_constraints: HashMap::new(),
 
 			print_perf: false,
 		}
@@ -137,6 +142,7 @@ impl PWorld {
 		self.constraints
 			.par_iter_mut()
 			.chain(self.tmp_constraints.par_iter_mut())
+			.chain(self.marionette_constraints.par_iter_mut().map(|(_k, v)| v))
 			.for_each(|constraint| constraint.step(dt));
 	}
 
@@ -145,6 +151,7 @@ impl PWorld {
 		self.constraints
 			.iter_mut()
 			.chain(self.tmp_constraints.iter_mut())
+			.chain(self.marionette_constraints.values_mut())
 			.for_each(|constraint| constraint.step(dt));
 	}
 
@@ -193,7 +200,13 @@ impl PWorld {
 				}
 				let model = self.pr_model();
 				let (dt, _) = timer.lap();
-				let event = UserEvent::Update(model, dt / rtime);
+				let event = UserEvent::Update(
+					model,
+					UpdateInfo {
+						load: dt / rtime,
+						coll_len: self.tmp_constraints.len(),
+					},
+				);
 				tx.send(event).unwrap();
 			}
 
@@ -212,7 +225,23 @@ impl PWorld {
 						}
 					}
 					ControllerMessage::ControlParticle(id, pos) => {
-						self.pg.control_particle(id, pos);
+						if let Some(pref) = self.pg.get_pref(id) {
+							self.marionette_constraints.insert(
+								id,
+								Box::new(LeashConstraint::new_with_pos(
+									pref,
+									pos.into(),
+								)),
+							);
+						} else {
+							eprintln!(
+								"ERROR: control particle id {} is bad",
+								id
+							);
+						}
+					}
+					ControllerMessage::UncontrolParticle(id) => {
+						self.marionette_constraints.remove(&id);
 					}
 				}
 			}

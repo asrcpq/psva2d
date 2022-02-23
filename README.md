@@ -12,9 +12,7 @@
 
 * Physics
 
-	* bug: bad value observed
-
-	* remove radius, face collision
+	* face collision
 
 	* break
 
@@ -30,16 +28,14 @@
 
 	* user control
 
-* Render
-
-	* split label stack overlay render
-
-	* render to images/video/gif
-
 * Performance
-
-	* glyph copy image
 
 	* Parallel collision
 
 	* HPBD
+
+* Render
+
+	* edge renderer
+
+	* camera particle

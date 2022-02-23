@@ -165,8 +165,9 @@ impl Viewer {
 					if idx == 0 {
 						if pressed {
 							self.select_particle(last_cursor);
-						} else {
-							self.particle_id = None;
+						} else if let Some(id) = self.particle_id.take() {
+							tx2.send(ControllerMessage::UncontrolParticle(id))
+								.unwrap();
 						}
 					}
 				}
@@ -209,13 +210,16 @@ impl Viewer {
 				}
 			}
 			Event::UserEvent(user_event) => match user_event {
-				UserEvent::Update(pr_model, load) => {
+				UserEvent::Update(pr_model, info) => {
 					load_smoother *= 0.8;
-					load_smoother += load * 0.2;
+					load_smoother += info.load * 0.2;
 					let load = load_smoother;
 					let fps_text =
 						format!("Load: {:.2}%", load * 100.).bytes().collect();
-					self.vkr.set_text(fps_text, load > 1.0);
+					self.vkr.set_text("load", fps_text, load > 1.0);
+					let coll_text =
+						format!("Coll: {}", info.coll_len).bytes().collect();
+					self.vkr.set_text("coll", coll_text, false);
 					self.last_model = Some(pr_model);
 					update_flag = true;
 				}
