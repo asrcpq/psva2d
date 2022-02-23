@@ -29,6 +29,10 @@ impl VkRender {
 		self.r_overlay.set_text(text, bad);
 	}
 
+	pub fn set_primitives(&mut self, primitives: Vec<crate::vertex::VertexWf>) {
+		self.r_world.primitives = primitives;
+	}
+
 	pub fn flush_swapchain(&mut self) {
 		self.recreate_swapchain = true;
 	}

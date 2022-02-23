@@ -5,4 +5,9 @@ members = [
 	"src/protocol",
 	"src/material",
 	"src/viewer",
+	"src/timer",
 ]
+
+[profile.dev]
+opt-level = 1
+overflow-checks = false

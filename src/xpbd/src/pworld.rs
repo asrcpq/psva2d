@@ -1,5 +1,4 @@
 use std::sync::mpsc::{Receiver, Sender};
-use std::time::{Duration, SystemTime};
 
 use crate::constraint::constraint_template::ConstraintTemplate;
 use crate::constraint::distance::DistanceConstraint;
@@ -9,10 +8,12 @@ use crate::controller_message::ControllerMessage;
 use crate::particle::Particle;
 use crate::particle_group::ParticleGroup;
 use crate::physical_model::PhysicalModel;
+use crate::posbox::Posbox;
 use crate::V2;
 use protocol::pr_model::PrConstraint;
 use protocol::pr_model::PrModel;
 use protocol::user_event::UserEvent;
+use timer::Timer;
 
 pub struct PWorld {
 	pub dt: f32,
@@ -28,6 +29,8 @@ pub struct PWorld {
 	pg: ParticleGroup,
 	constraints: Vec<Box<dyn Constraint>>,
 	tmp_constraints: Vec<Box<dyn Constraint>>,
+
+	print_perf: bool,
 }
 
 impl Default for PWorld {
@@ -43,11 +46,18 @@ impl Default for PWorld {
 			pg,
 			constraints: Vec::new(),
 			tmp_constraints: Vec::new(),
+
+			print_perf: false,
 		}
 	}
 }
 
 impl PWorld {
+	pub fn with_posbox(mut self, posbox: Posbox) -> Self {
+		self.pg = self.pg.with_posbox(posbox);
+		self
+	}
+
 	pub fn with_time_scale(mut self, time_scale: f32) -> Self {
 		self.time_scale = time_scale;
 		self
@@ -139,16 +149,23 @@ impl PWorld {
 	}
 
 	fn update_frame(&mut self, dt: f32, iteration: usize) {
+		let mut timer = Timer::default();
 		if dt == 0f32 {
 			return;
 		}
 		self.pg.update(dt);
+		timer.lap();
 		self.tmp_constraints = self.pg.collision_constraints();
+		timer.lap();
 		for constraint in self.constraints.iter_mut() {
 			constraint.pre_iteration();
 		}
 		for _ in 0..iteration {
 			self.solve_constraints(dt);
+		}
+		timer.lap();
+		if self.print_perf {
+			eprintln!("{:?}", timer.laps);
 		}
 	}
 
@@ -163,11 +180,10 @@ impl PWorld {
 		tx: Sender<UserEvent>,
 		rx: Receiver<ControllerMessage>,
 	) {
-		let mut start_time = SystemTime::now();
-		let rtime: u64 =
-			(self.dt * 1e6 * self.ppr as f32 * self.time_scale) as u64;
+		let rtime = self.dt * self.ppr as f32 * self.time_scale;
 		let mut first_frame = true;
 		loop {
+			let mut timer = Timer::default();
 			if self.forward_frames != 0 {
 				self.forward_frames -= 1;
 				if !first_frame {
@@ -176,17 +192,11 @@ impl PWorld {
 					first_frame = false;
 				}
 				let model = self.pr_model();
-				let next_time = SystemTime::now();
-				let dt =
-					next_time.duration_since(start_time).unwrap().as_micros()
-						as f32 / rtime as f32;
-				let event = UserEvent::Update(model, dt);
+				let (dt, _) = timer.lap();
+				let event = UserEvent::Update(model, dt / rtime);
 				tx.send(event).unwrap();
 			}
 
-			let next_time = SystemTime::now();
-			let dt = next_time.duration_since(start_time).unwrap().as_micros()
-				as u64;
 			while let Ok(msg) = rx.try_recv() {
 				match msg {
 					ControllerMessage::TogglePause => {
@@ -203,10 +213,10 @@ impl PWorld {
 					}
 				}
 			}
-			if dt < rtime {
-				std::thread::sleep(Duration::from_micros(rtime - dt));
+			let (_, dt_a) = timer.lap();
+			if dt_a < rtime {
+				timer.sleep(rtime - dt_a);
 			}
-			start_time = next_time;
 		}
 	}
 }
