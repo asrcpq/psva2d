@@ -14,8 +14,8 @@ fn main() {
 	imbuilder.compute_cells();
 	imbuilder.expand_cells();
 	let pmodel = imbuilder.build_physical_model();
-	pworld.add_model(pmodel.clone(), V2::new(0.0, -4.0));
-	pworld.add_model(pmodel, V2::new(0.5, -8.0));
+	pworld.add_model(pmodel.clone(), V2::new(-0.5, -4.0));
+	pworld.add_model(pmodel, V2::new(0.5, -10.0));
 	let (texture_data, indexer) = imbuilder.finish();
 	textures.push(texture_data);
 	viewer::run(pworld, indexer.into_ref(), textures);
