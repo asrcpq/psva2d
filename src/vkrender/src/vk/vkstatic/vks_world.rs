@@ -118,7 +118,7 @@ impl VksWorld {
 	) -> VertexBuffer<VertexWf> {
 		let mut vertices = vec![];
 		let color1 = [0.0, 0.0, 1.0, 0.5];
-		let color2 = [0.0, 1.0, 0.0, 0.0];
+		let color2 = [0.0, 1.0, 0.0, 1.0];
 		for constraint in &pr_model.constraints {
 			let mut positions = vec![];
 			for &pid in constraint.particles.iter() {

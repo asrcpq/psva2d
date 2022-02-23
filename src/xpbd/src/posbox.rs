@@ -1,13 +1,13 @@
 use crate::V2;
 
-pub struct PosBox {
+pub struct Posbox {
 	pub xmin: f32,
 	pub xmax: f32,
 	pub ymin: f32,
 	pub ymax: f32,
 }
 
-impl PosBox {
+impl Posbox {
 	pub fn apply(&self, pos: &mut V2) -> bool {
 		let xmin = self.xmin;
 		let xmax = self.xmax;
