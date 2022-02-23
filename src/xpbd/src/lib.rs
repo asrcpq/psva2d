@@ -1,3 +1,4 @@
+mod pos_box;
 pub mod constraint;
 pub mod controller_message;
 pub mod particle;
