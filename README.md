@@ -12,6 +12,8 @@
 
 * Physics
 
+	* bug: bad value observed
+
 	* remove radius, face collision
 
 	* break

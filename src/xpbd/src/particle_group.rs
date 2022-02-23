@@ -44,6 +44,15 @@ impl ParticleGroup {
 		self
 	}
 
+	pub fn control_particle(&mut self, id: usize, pos: [f32; 2]) {
+		if let Some(pref) = self.data.get(&id) {
+			let mut p = pref.try_lock().unwrap();
+			p.reset_pos(V2::new(pos[0], pos[1]));
+		} else {
+			eprintln!("WARN: trying to control non existent particle");
+		}
+	}
+
 	pub fn update(&mut self, dt: f32) {
 		let old_shp = std::mem::take(&mut self.shp);
 		for pref in old_shp.into_iter().map(|(_, p)| p).flatten() {
