@@ -53,6 +53,11 @@ impl Particle {
 		self.ppos += dp;
 	}
 
+	pub fn reset_pos(&mut self, p: V2) {
+		self.pos = p;
+		self.ppos = p;
+	}
+
 	pub fn get_imass(&self) -> f32 {
 		self.imass
 	}

@@ -211,6 +211,9 @@ impl PWorld {
 							self.forward_frames += 1;
 						}
 					}
+					ControllerMessage::ControlParticle(id, pos) => {
+						self.pg.control_particle(id, pos);
+					}
 				}
 			}
 			let (_, dt_a) = timer.lap();
