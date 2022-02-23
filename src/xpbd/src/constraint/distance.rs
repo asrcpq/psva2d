@@ -1,5 +1,5 @@
 use crate::constraint::particle_list::ParticleList;
-use crate::constraint::{Constraint, rp};
+use crate::constraint::{rp, Constraint};
 use crate::particle::PRef;
 use protocol::pr_model::PrConstraint;
 
@@ -133,7 +133,7 @@ impl Constraint for DistanceConstraint {
 			eprintln!("WARN: bad distance {}", l);
 			p1_mut.add_pos(rp());
 			p2_mut.add_pos(rp());
-			return
+			return;
 		}
 		let dl = l - self.l0;
 		if self.ty == DCTy::Repulsive && dl >= 0.

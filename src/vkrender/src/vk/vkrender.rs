@@ -25,8 +25,8 @@ pub struct VkRender {
 }
 
 impl VkRender {
-	pub fn set_text(&mut self, text: Vec<u8>, bad: bool) {
-		self.r_overlay.set_text(text, bad);
+	pub fn set_text(&mut self, name: &str, text: Vec<u8>, bad: bool) {
+		self.r_overlay.simple_set_text(name, text, bad);
 	}
 
 	pub fn set_primitives(&mut self, primitives: Vec<crate::vertex::VertexWf>) {

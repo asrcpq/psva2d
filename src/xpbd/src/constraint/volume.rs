@@ -1,5 +1,5 @@
 use crate::constraint::particle_list::ParticleList;
-use crate::constraint::{Constraint, rp};
+use crate::constraint::Constraint;
 use crate::particle::PRef;
 use crate::V2;
 use protocol::pr_model::PrConstraint;
@@ -94,13 +94,6 @@ impl Constraint for VolumeConstraint {
 		let pos1 = p1_mut.get_pos();
 		let pos2 = p2_mut.get_pos();
 		let s = area_p(pos0, pos1, pos2);
-		if !s.is_normal() {
-			eprintln!("WARN: bad area {}", s);
-			p0_mut.add_pos(rp());
-			p1_mut.add_pos(rp());
-			p2_mut.add_pos(rp());
-			return
-		}
 		let ds = s - self.s0;
 		let x0 = pos0[0];
 		let x1 = pos1[0];
