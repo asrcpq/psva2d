@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+type Map<K, V> = fnv::FnvHashMap<K, V>;
+// type Map<K, V> = HashMap<K, V>;
 
 use crate::constraint::distance::DistanceConstraint;
 use crate::constraint::Constraint;
@@ -11,8 +13,8 @@ pub struct ParticleGroup {
 	// Note: compress function? but maybe not necessary
 	id_alloc: usize,
 	csize: f32, // = 2 x radius
-	shp: HashMap<C2, Vec<PRef>>,
-	data: HashMap<usize, PRef>,
+	shp: Map<C2, Vec<PRef>>,
+	data: Map<usize, PRef>,
 	speed_limit_k: f32,
 	posbox: Posbox,
 }
@@ -22,21 +24,26 @@ impl Default for ParticleGroup {
 		Self {
 			id_alloc: 0,
 			csize: 0.08,
-			shp: HashMap::new(),
-			data: HashMap::new(),
+			shp: Default::default(),
+			data: Default::default(),
 			// particle cannot move more than k * csize in dt
 			speed_limit_k: 0.7,
 			posbox: Posbox {
-				xmin: -5.0,
-				xmax: 5.0,
-				ymin: -10.0,
-				ymax: 0.0,
-			}
+				xmin: -1e3,
+				xmax: 1e3,
+				ymin: -1e3,
+				ymax: 1e3,
+			},
 		}
 	}
 }
 
 impl ParticleGroup {
+	pub fn with_posbox(mut self, posbox: Posbox) -> Self {
+		self.posbox = posbox;
+		self
+	}
+
 	pub fn update(&mut self, dt: f32) {
 		let old_shp = std::mem::take(&mut self.shp);
 		for pref in old_shp.into_iter().map(|(_, p)| p).flatten() {
@@ -127,7 +134,7 @@ impl ParticleGroup {
 	}
 
 	pub fn pr_particles(&self) -> HashMap<usize, PrParticle> {
-		let mut result = HashMap::new();
+		let mut result = HashMap::default();
 		for (&id, p) in self.data.iter() {
 			let prp = p.try_lock().unwrap().render();
 			assert!(result.insert(id, prp).is_none());

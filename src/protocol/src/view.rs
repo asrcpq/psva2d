@@ -11,7 +11,7 @@ impl Default for View {
 			world_center: [0., 0.],
 			screen_size: [640, 480],
 			zoom: 200.0,
-			move_k: 0.1,
+			move_k: 0.2,
 		}
 	}
 }

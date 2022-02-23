@@ -9,8 +9,10 @@ use material::texture_indexer::TextureIndexerRef;
 use protocol::pr_model::PrModel;
 use protocol::view::View;
 use vkrender::camera::Camera;
+use vkrender::vertex::VertexWf;
 use vkrender::vk::vkrender::VkRender;
 use xpbd::controller_message::ControllerMessage;
+use xpbd::posbox::Posbox;
 use xpbd::pworld::PWorld;
 
 pub fn run(
@@ -18,13 +20,22 @@ pub fn run(
 	indexer: TextureIndexerRef,
 	textures: Vec<TextureData>,
 ) {
+	let xmin = -5.0;
+	let xmax = 5.0;
+	let ymin = -10.0;
+	let ymax = 0.;
+	let posbox = Posbox {
+		xmin,
+		xmax,
+		ymin,
+		ymax,
+	};
+	pworld = pworld.with_posbox(posbox);
+
 	let window_size = [1600u32, 1000];
 	let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
-	let mut vkr = VkRender::new(&event_loop, window_size, textures, indexer);
-	let mut view = View::default();
+
 	let elp: EventLoopProxy<UserEvent> = event_loop.create_proxy();
-	let mut update_flag = true;
-	let mut load_smoother = 0.0;
 	let (tx2, rx2) = channel();
 	let _ = std::thread::spawn(move || {
 		let (tx, rx) = channel();
@@ -35,6 +46,29 @@ pub fn run(
 			elp.send_event(user_event).unwrap();
 		}
 	});
+
+	let mut vkr = VkRender::new(&event_loop, window_size, textures, indexer);
+	vkr.set_primitives(
+		vec![
+			[xmin, ymin],
+			[xmin, ymax],
+			[xmin, ymax],
+			[xmax, ymax],
+			[xmax, ymax],
+			[xmax, ymin],
+			[xmax, ymin],
+			[xmin, ymin],
+		]
+		.into_iter()
+		.map(|pos| VertexWf {
+			color: [1.0, 1.0, 0.0, 1.0],
+			pos,
+		})
+		.collect(),
+	);
+	let mut view = View::default();
+	let mut update_flag = true;
+	let mut load_smoother = 0.0;
 	let mut last_model: Option<PrModel> = None;
 	event_loop.run(move |event, _, control_flow| match event {
 		Event::WindowEvent { event: e, .. } => match e {
