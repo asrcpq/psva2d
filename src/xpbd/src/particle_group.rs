@@ -27,7 +27,7 @@ impl Default for ParticleGroup {
 			shp: Default::default(),
 			data: Default::default(),
 			// particle cannot move more than k * csize in dt
-			speed_limit_k: 0.7,
+			speed_limit_k: 1.0,
 			posbox: Posbox {
 				xmin: -1e3,
 				xmax: 1e3,

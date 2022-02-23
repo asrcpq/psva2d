@@ -8,7 +8,7 @@ pub struct View {
 impl Default for View {
 	fn default() -> Self {
 		Self {
-			world_center: [0., 0.],
+			world_center: [0., -5.],
 			screen_size: [640, 480],
 			zoom: 200.0,
 			move_k: 0.2,

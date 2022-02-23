@@ -32,7 +32,7 @@ pub fn run(
 	};
 	pworld = pworld.with_posbox(posbox);
 
-	let window_size = [1600u32, 1000];
+	let window_size = [800u32, 600];
 	let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
 
 	let elp: EventLoopProxy<UserEvent> = event_loop.create_proxy();
