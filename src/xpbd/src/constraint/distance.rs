@@ -1,7 +1,6 @@
 use crate::constraint::particle_list::ParticleList;
-use crate::constraint::Constraint;
+use crate::constraint::{Constraint, rp};
 use crate::particle::PRef;
-use crate::V2;
 use protocol::pr_model::PrConstraint;
 
 #[derive(Clone)]
@@ -128,11 +127,13 @@ impl Constraint for DistanceConstraint {
 		if imass == 0.0 {
 			return;
 		}
-		let mut dp = p1_mut.get_pos() - p2_mut.get_pos();
+		let dp = p1_mut.get_pos() - p2_mut.get_pos();
 		let l = dp.magnitude();
-		if l.abs() < f32::EPSILON {
-			eprintln!("Dup point detected in distance constraint!");
-			dp = V2::new(0.0, 1.0);
+		if !l.is_normal() {
+			eprintln!("WARN: bad distance {}", l);
+			p1_mut.add_pos(rp());
+			p2_mut.add_pos(rp());
+			return
 		}
 		let dl = l - self.l0;
 		if self.ty == DCTy::Repulsive && dl >= 0.

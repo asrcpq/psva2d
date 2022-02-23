@@ -1,13 +1,9 @@
-use protocol::V2;
 use protocol::user_event::UserEvent;
+use protocol::V2;
 
 use std::sync::mpsc::channel;
 use winit::event::{
-	ElementState,
-	Event,
-	KeyboardInput,
-	MouseButton,
-	VirtualKeyCode as Vkc,
+	ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode as Vkc,
 	WindowEvent,
 };
 use winit::event_loop::{ControlFlow, EventLoop, EventLoopProxy};
@@ -51,7 +47,8 @@ impl Viewer {
 		};
 		pworld = pworld.with_posbox(posbox);
 		let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
-		let mut vkr = VkRender::new(&event_loop, window_size, textures, indexer);
+		let mut vkr =
+			VkRender::new(&event_loop, window_size, textures, indexer);
 		vkr.set_primitives(
 			vec![
 				[xmin, ymin],
@@ -70,7 +67,7 @@ impl Viewer {
 			})
 			.collect(),
 		);
-	
+
 		Self {
 			view: View::default(),
 			pworld: Some(pworld),
@@ -79,7 +76,6 @@ impl Viewer {
 			particle_id: None,
 			last_model: None,
 		}
-
 	}
 
 	fn select_particle(&mut self, c: V2) {
@@ -89,8 +85,8 @@ impl Viewer {
 		let pr_model = match self.last_model.as_ref() {
 			None => {
 				self.particle_id = None;
-				return
-			},
+				return;
+			}
 			Some(m) => m,
 		};
 		for (id, particle) in &pr_model.particles {
@@ -136,10 +132,7 @@ impl Viewer {
 					self.vkr.flush_swapchain();
 					update_flag = true;
 				}
-				WindowEvent::CursorMoved {
-					position: p,
-					..
-				} => {
+				WindowEvent::CursorMoved { position: p, .. } => {
 					let c = V2::new(p.x as f32, p.y as f32);
 					if button_state[1] {
 						self.view.move_view(c - last_cursor);
@@ -147,11 +140,15 @@ impl Viewer {
 					} else if button_state[0] {
 						if let Some(id) = self.particle_id {
 							let c = self.view.s2w(c);
-							tx2.send(ControllerMessage::ControlParticle(id, c.into())).unwrap();
+							tx2.send(ControllerMessage::ControlParticle(
+								id,
+								c.into(),
+							))
+							.unwrap();
 						}
 					}
 					last_cursor = c;
-				} 
+				}
 				WindowEvent::MouseInput {
 					button: b,
 					state: s,
@@ -206,7 +203,8 @@ impl Viewer {
 				if update_flag {
 					if let Some(pr_model) = &self.last_model {
 						update_flag = false;
-						self.vkr.render(pr_model, Camera::from_view(&self.view));
+						self.vkr
+							.render(pr_model, Camera::from_view(&self.view));
 					}
 				}
 			}

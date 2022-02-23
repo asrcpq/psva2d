@@ -1,5 +1,5 @@
 use crate::constraint::particle_list::ParticleList;
-use crate::constraint::Constraint;
+use crate::constraint::{Constraint, rp};
 use crate::particle::PRef;
 use crate::V2;
 use protocol::pr_model::PrConstraint;
@@ -93,16 +93,21 @@ impl Constraint for VolumeConstraint {
 		let pos0 = p0_mut.get_pos();
 		let pos1 = p1_mut.get_pos();
 		let pos2 = p2_mut.get_pos();
+		let s = area_p(pos0, pos1, pos2);
+		if !s.is_normal() {
+			eprintln!("WARN: bad area {}", s);
+			p0_mut.add_pos(rp());
+			p1_mut.add_pos(rp());
+			p2_mut.add_pos(rp());
+			return
+		}
+		let ds = s - self.s0;
 		let x0 = pos0[0];
 		let x1 = pos1[0];
 		let x2 = pos2[0];
 		let y0 = pos0[1];
 		let y1 = pos1[1];
 		let y2 = pos2[1];
-		let s = area_p(pos0, pos1, pos2);
-		let ds = s - self.s0;
-		// todo: handle dup point?
-
 		let grad0 = V2::new(y1 - y2, x2 - x1);
 		let grad1 = V2::new(y2 - y0, x0 - x2);
 		let grad2 = V2::new(y0 - y1, x1 - x0);
