@@ -33,3 +33,11 @@
 	* split label stack overlay render
 
 	* render to images/video/gif
+
+* Performance
+
+	* glyph copy image
+
+	* Parallel collision
+
+	* HPBD

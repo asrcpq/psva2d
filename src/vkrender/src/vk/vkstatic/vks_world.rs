@@ -3,7 +3,7 @@ use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer, TypedBufferAccess};
 use vulkano::command_buffer::SubpassContents;
 use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::pipeline::graphics::viewport::Viewport;
-use vulkano::pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint};
+use vulkano::pipeline::{Pipeline, PipelineBindPoint};
 
 use super::vks::Vks;
 use crate::camera::Camera;
@@ -17,9 +17,10 @@ use protocol::pr_model::PrModel;
 
 type VertexBuffer<V> = Arc<CpuAccessibleBuffer<[V]>>;
 type VertexBuffers<V> = Vec<(i32, VertexBuffer<V>)>;
+type CameraBuffer = Arc<CpuAccessibleBuffer<Camera>>;
 
 #[derive(PartialEq)]
-pub enum VkRenderMode {
+enum RenderMode {
 	Normal,
 	Wireframe,
 }
@@ -32,7 +33,7 @@ pub struct VksWorld {
 	render_pass: VkwRenderPass,
 	texture_set: VkwTextureSet,
 
-	render_mode: VkRenderMode,
+	render_mode: RenderMode,
 	indexer: TextureIndexerRef,
 	tex_coords: VkwTexCoords,
 }
@@ -65,25 +66,17 @@ impl VksWorld {
 			render_pass,
 			texture_set,
 
-			render_mode: VkRenderMode::Normal,
+			render_mode: RenderMode::Normal,
 			indexer,
 			tex_coords,
 		}
 	}
 
 	pub fn toggle_render_mode(&mut self) {
-		if self.render_mode == VkRenderMode::Normal {
-			self.render_mode = VkRenderMode::Wireframe;
+		if self.render_mode == RenderMode::Normal {
+			self.render_mode = RenderMode::Wireframe;
 		} else {
-			self.render_mode = VkRenderMode::Normal;
-		}
-	}
-
-	pub fn get_pipeline(&self) -> Arc<GraphicsPipeline> {
-		if self.render_mode == VkRenderMode::Normal {
-			self.pipeline.clone()
-		} else {
-			self.pipeline_wf.clone()
+			self.render_mode = RenderMode::Normal;
 		}
 	}
 
@@ -162,9 +155,72 @@ impl VksWorld {
 		.unwrap()
 	}
 
-	pub fn build_command(
+	pub fn build_command_wireframe(
 		&self,
 		builder: &mut VkwCommandBuilder,
+		pr_model: &PrModel,
+		uniform_buffer: CameraBuffer,
+	) {
+		let layout = self.pipeline_wf.layout().descriptor_set_layouts().get(0).unwrap();
+		let set = PersistentDescriptorSet::new(
+			layout.clone(),
+			[WriteDescriptorSet::buffer(0, uniform_buffer)],
+		)
+		.unwrap();
+		let vertex_buffer = self.generate_vertex_wf_buffer(pr_model);
+		let buflen = vertex_buffer.len();
+		builder.bind_pipeline_graphics(self.pipeline_wf.clone())
+			.bind_descriptor_sets(
+				PipelineBindPoint::Graphics,
+				self.pipeline_wf.layout().clone(),
+				0,
+				set,
+			)
+			.bind_vertex_buffers(0, vertex_buffer)
+			.draw(buflen as u32, 1, 0, 0)
+			.unwrap();
+	}
+
+	pub fn build_command_world(
+		&self,
+		builder: &mut VkwCommandBuilder,
+		pr_model: &PrModel,
+		uniform_buffer: CameraBuffer,
+	) {
+		let layout = self.pipeline.layout().descriptor_set_layouts().get(0).unwrap();
+		let set = PersistentDescriptorSet::new(
+			layout.clone(),
+			[WriteDescriptorSet::buffer(0, uniform_buffer)],
+		)
+		.unwrap();
+		let render_model = self.indexer.borrow().compile_model(pr_model);
+		let vertex_buffers = self.generate_vertex_buffers(&render_model);
+		builder.bind_pipeline_graphics(self.pipeline.clone())
+			.bind_descriptor_sets(
+				PipelineBindPoint::Graphics,
+				self.pipeline.layout().clone(),
+				0,
+				vec![set, self.texture_set.clone()],
+			);
+		for (id, vertex_buffer) in vertex_buffers.into_iter() {
+			let push_constants =
+				shader::fs::ty::PushConstants { layer: id };
+			builder.push_constants(
+				self.pipeline.layout().clone(),
+				0,
+				push_constants,
+			);
+			let buflen = vertex_buffer.len();
+			builder
+				.bind_vertex_buffers(0, vertex_buffer)
+				.draw(buflen as u32, 1, 0, 0)
+				.unwrap();
+		}
+	}
+
+	pub fn build_command(
+		&self,
+		mut builder: &mut VkwCommandBuilder,
 		image_num: usize,
 		pr_model: &PrModel,
 		camera: Camera,
@@ -177,13 +233,6 @@ impl VksWorld {
 			camera,
 		)
 		.unwrap();
-		let pipeline = self.get_pipeline();
-		let layout = pipeline.layout().descriptor_set_layouts().get(0).unwrap();
-		let set = PersistentDescriptorSet::new(
-			layout.clone(),
-			[WriteDescriptorSet::buffer(0, uniform_buffer)],
-		)
-		.unwrap();
 
 		let clear_values = vec![[0.0, 0.0, 0.0, 1.0].into()];
 		builder
@@ -193,45 +242,10 @@ impl VksWorld {
 				clear_values,
 			)
 			.unwrap()
-			.set_viewport(0, [viewport])
-			.bind_pipeline_graphics(pipeline.clone());
-
-		if self.render_mode == VkRenderMode::Normal {
-			let render_model = self.indexer.borrow().compile_model(pr_model);
-			let vertex_buffers = self.generate_vertex_buffers(&render_model);
-			builder.bind_descriptor_sets(
-				PipelineBindPoint::Graphics,
-				pipeline.layout().clone(),
-				0,
-				vec![set, self.texture_set.clone()],
-			);
-			for (id, vertex_buffer) in vertex_buffers.into_iter() {
-				let push_constants =
-					shader::fs::ty::PushConstants { layer: id };
-				builder.push_constants(
-					pipeline.layout().clone(),
-					0,
-					push_constants,
-				);
-				let buflen = vertex_buffer.len();
-				builder
-					.bind_vertex_buffers(0, vertex_buffer)
-					.draw(buflen as u32, 1, 0, 0)
-					.unwrap();
-			}
-		} else {
-			let vertex_buffer = self.generate_vertex_wf_buffer(pr_model);
-			let buflen = vertex_buffer.len();
-			builder
-				.bind_descriptor_sets(
-					PipelineBindPoint::Graphics,
-					pipeline.layout().clone(),
-					0,
-					set,
-				)
-				.bind_vertex_buffers(0, vertex_buffer)
-				.draw(buflen as u32, 1, 0, 0)
-				.unwrap();
+			.set_viewport(0, [viewport]);
+		self.build_command_world(&mut builder, pr_model, uniform_buffer.clone());
+		if self.render_mode == RenderMode::Wireframe {
+			self.build_command_wireframe(&mut builder, pr_model, uniform_buffer.clone());
 		}
 		builder.end_render_pass().unwrap();
 	}
