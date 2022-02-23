@@ -4,6 +4,7 @@ pub mod volume;
 
 mod particle_list;
 
+use crate::V2;
 use crate::particle::PRef;
 use protocol::pr_model::PrConstraint;
 
@@ -14,3 +15,10 @@ pub trait Constraint: dyn_clone::DynClone + Send {
 }
 
 dyn_clone::clone_trait_object!(Constraint);
+
+pub fn rp() -> V2 {
+	use rand::prelude::*;
+	let dx = rand::thread_rng().gen::<f32>() / 1e5;
+	let dy = rand::thread_rng().gen::<f32>() / 1e5;
+	V2::new(dx, dy)
+}
