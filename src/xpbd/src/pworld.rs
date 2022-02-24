@@ -176,7 +176,8 @@ impl PWorld {
 					model,
 					UpdateInfo {
 						load: dt / rtime,
-						coll_len: self.cg.tmp_len(),
+						particle_len: self.pg.len(),
+						constraint_len: self.cg.len(),
 					},
 				);
 				tx.send(event).unwrap();

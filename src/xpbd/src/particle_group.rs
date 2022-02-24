@@ -44,6 +44,10 @@ impl ParticleGroup {
 		self
 	}
 
+	pub fn len(&self) -> usize {
+		self.data.len()
+	}
+
 	pub fn update(&mut self, dt: f32) {
 		let old_shp = std::mem::take(&mut self.shp);
 		for pref in old_shp.into_iter().map(|(_, p)| p).flatten() {
