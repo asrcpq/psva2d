@@ -133,21 +133,10 @@ impl VksWorld {
 				}
 			}
 			if positions.len() == 2 {
-				if constraint.id != -1 && constraint.id != -2 {
-					eprintln!(
-						"WARNING: unknown constraint id {}",
-						constraint.id
-					);
-				}
 				vertices.extend(vec![0, 1].into_iter().map(|i| VertexWf {
 					color: if constraint.id == -1 { color1 } else { color2 },
 					pos: positions[i],
 				}));
-			} else if positions.len() != 3 {
-				eprintln!(
-					"ERROR: found constraint contains {} particles",
-					positions.len()
-				);
 			}
 		}
 		CpuAccessibleBuffer::from_iter(

@@ -6,7 +6,6 @@ use protocol::pr_model::PrConstraint;
 
 #[derive(Clone)]
 pub struct VolumeConstraintTemplate {
-	pub id: isize,
 	pub ps: Vec<usize>,
 	pub compliance: f32,
 }
@@ -24,7 +23,6 @@ fn area_p(p1: V2, p2: V2, p3: V2) -> f32 {
 
 #[derive(Clone)]
 pub struct VolumeConstraint {
-	id: isize, // for triangle render, 0 for no render
 	ps: ParticleList,
 	ps_sort: ParticleList,
 	s0: f32,
@@ -41,18 +39,12 @@ impl VolumeConstraint {
 		let p2 = ps_sort[2].try_lock().unwrap().get_pos();
 		let s0 = area_p(p0, p1, p2);
 		Self {
-			id: -1,
 			ps,
 			ps_sort,
 			s0,
 			lambda: 0f32,
 			compliance: 1e-9,
 		}
-	}
-
-	pub fn with_id(mut self, id: isize) -> Self {
-		self.id = id;
-		self
 	}
 
 	pub fn with_compliance(mut self, c: f32) -> Self {
@@ -66,9 +58,9 @@ impl VolumeConstraint {
 }
 
 impl Constraint for VolumeConstraint {
-	fn render(&self) -> PrConstraint {
+	fn render(&self, id: i32) -> PrConstraint {
 		PrConstraint {
-			id: self.id,
+			id,
 			particles: self.ps.ids(),
 		}
 	}

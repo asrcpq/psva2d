@@ -7,7 +7,6 @@ use protocol::pr_model::PrConstraint;
 pub struct LeashConstraint {
 	p: PRef,
 	pos: V2,
-	id: isize,
 	lambda: f32,
 	compliance: f32,
 }
@@ -22,15 +21,9 @@ impl LeashConstraint {
 		Self {
 			p,
 			pos,
-			id: -1,
 			lambda: 0.,
 			compliance: 1e-8,
 		}
-	}
-
-	pub fn with_id(mut self, id: isize) -> Self {
-		self.id = id;
-		self
 	}
 
 	pub fn with_compliance(mut self, c: f32) -> Self {
@@ -44,9 +37,9 @@ impl LeashConstraint {
 }
 
 impl Constraint for LeashConstraint {
-	fn render(&self) -> PrConstraint {
+	fn render(&self, id: i32) -> PrConstraint {
 		PrConstraint {
-			id: self.id,
+			id,
 			particles: vec![self.p.try_lock().unwrap().get_id()],
 		}
 	}

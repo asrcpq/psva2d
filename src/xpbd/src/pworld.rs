@@ -82,7 +82,12 @@ impl PWorld {
 		self
 	}
 
-	pub fn add_model(&mut self, physical_model: PhysicalModel, offset: V2) {
+	pub fn add_model(
+		&mut self,
+		physical_model: PhysicalModel,
+		offset: V2,
+	) -> Vec<i32> {
+		let mut cids = Vec::new();
 		eprintln!("INFO: add model: {:?}", physical_model);
 		let mut id_map = vec![];
 		for p in physical_model.particles.into_iter() {
@@ -100,19 +105,19 @@ impl PWorld {
 					DistanceConstraint::new_with_l0(p1, p2, ct.l0)
 						.with_compliance(ct.compliance)
 						.with_ty(ct.ty)
-						.with_id(ct.id)
 						.build()
 				}
 				Volume(ct) => {
 					let ps = (0..3).map(|i| id_map[ct.ps[i]].clone()).collect();
 					VolumeConstraint::new(ps)
 						.with_compliance(ct.compliance)
-						.with_id(ct.id)
 						.build()
 				}
 			};
-			self.cg.add_constraint(con);
+			let cid = self.cg.add_constraint(con);
+			cids.push(cid);
 		}
+		cids
 	}
 
 	pub fn pr_model(&self) -> PrModel {

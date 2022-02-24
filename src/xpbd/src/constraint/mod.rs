@@ -9,10 +9,12 @@ use crate::particle::PRef;
 use crate::V2;
 use protocol::pr_model::PrConstraint;
 
+pub type CRef = Box<dyn Constraint>;
+
 pub trait Constraint: dyn_clone::DynClone + Send {
 	fn pre_iteration(&mut self);
 	fn step(&mut self, dt: f32);
-	fn render(&self) -> PrConstraint;
+	fn render(&self, id: i32) -> PrConstraint;
 }
 
 dyn_clone::clone_trait_object!(Constraint);

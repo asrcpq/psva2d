@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use crate::face::TextureData;
-use crate::texture_indexer::{FaceInfo, TextureIndexer};
+use crate::texture_indexer::FaceInfo;
 use crate::V2;
 use xpbd::constraint::constraint_template::ConstraintTemplate::{
 	Distance, Volume,
@@ -24,7 +26,7 @@ pub struct ImageModelBuilder {
 	csize: f32,
 	texture_id: i32,
 	image: image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
-	indexer: TextureIndexer,
+	faces: HashMap<usize, FaceInfo>,
 	cells: Vec<Vec<Option<Cell>>>,
 	particles: Vec<ParticleTemplate>,
 	pid_alloc: usize,
@@ -34,7 +36,6 @@ pub struct ImageModelBuilder {
 impl ImageModelBuilder {
 	pub fn new(
 		texture_id: i32,
-		indexer: TextureIndexer,
 		image_path: &str,
 	) -> Self {
 		eprintln!("INFO: Loading {}", image_path);
@@ -47,7 +48,7 @@ impl ImageModelBuilder {
 			grid_size: [1024 / len[0], 1024 / len[1]],
 			csize: 0.08,
 			texture_id,
-			indexer,
+			faces: Default::default(),
 			image,
 			cells: vec![vec![None; len[1] as usize]; len[0] as usize],
 			particles: Vec::new(),
@@ -149,7 +150,6 @@ impl ImageModelBuilder {
 			let pos0 = self.particles[v[0].pid].pos;
 			let pos1 = self.particles[v[1].pid].pos;
 			let dc = DistanceConstraintTemplate {
-				id: -1,
 				l0: (pos0 - pos1).magnitude(),
 				ps: vec![v[0].pid, v[1].pid],
 				compliance: 1e-5,
@@ -163,12 +163,12 @@ impl ImageModelBuilder {
 		pairs.extend(self.get_cells(vec![[0, 0], [0, -1], [-1, -1]]));
 		pairs.into_iter().for_each(|v| {
 			let ps = vec![v[0].pid, v[1].pid, v[2].pid];
-			let cid = self.indexer.alloc_id(FaceInfo {
+			let face_info = FaceInfo {
 				texture_id: self.texture_id,
 				uvid: ps.clone().try_into().unwrap(),
-			});
+			};
+			self.faces.insert(constraints.len(), face_info);
 			let vc = VolumeConstraintTemplate {
-				id: cid,
 				ps,
 				compliance: 1e-7,
 			};
@@ -180,11 +180,11 @@ impl ImageModelBuilder {
 		}
 	}
 
-	pub fn finish(self) -> (TextureData, TextureIndexer) {
+	pub fn finish(self) -> (TextureData, HashMap<usize, FaceInfo>) {
 		let td = TextureData {
 			tex_coords: self.tex_coords,
 			image: self.image,
 		};
-		(td, self.indexer)
+		(td, self.faces)
 	}
 }
