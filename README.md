@@ -2,19 +2,17 @@
 
 * UI
 
-	* primitive(lines)(for box)
-
-	* show more info(particle/constraint len, max speed/limit, energy)
+	* input box
 
 	* toggle all info
 
-	* command input bar
-
 * Physics
+
+	* simple break
 
 	* face collision
 
-	* break
+	* advanced mesh(remesh/mesh break)
 
 	* hinge
 
