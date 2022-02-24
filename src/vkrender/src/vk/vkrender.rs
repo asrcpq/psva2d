@@ -10,6 +10,7 @@ use super::vkstatic::vks_overlay::VksOverlay;
 use super::vkstatic::vks_world::VksWorld;
 use super::vkwrapper::*;
 use crate::camera::Camera;
+use crate::render_mode::RenderMode;
 use material::face::TextureData;
 use material::texture_indexer::TextureIndexerRef;
 use protocol::pr_model::PrModel;
@@ -37,8 +38,8 @@ impl VkRender {
 		self.recreate_swapchain = true;
 	}
 
-	pub fn toggle_render_mode(&mut self) {
-		self.r_world.toggle_render_mode();
+	pub fn set_render_mode(&mut self, render_mode: RenderMode) {
+		self.r_world.set_render_mode(render_mode);
 	}
 
 	pub fn new<E>(

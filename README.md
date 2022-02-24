@@ -2,6 +2,8 @@
 
 * UI
 
+	* key input seq show
+
 	* input box
 
 	* toggle all info
@@ -34,6 +36,8 @@
 
 * Render
 
-	* edge renderer
+	* highlight mouse control particle
+
+	* model edge rendering
 
 	* camera particle

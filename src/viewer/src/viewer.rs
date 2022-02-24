@@ -1,18 +1,24 @@
 use protocol::user_event::UserEvent;
 use protocol::V2;
 
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{Sender, channel};
 use winit::event::{
-	ElementState, Event, KeyboardInput, MouseButton, ModifiersState,
-	VirtualKeyCode as Vkc, WindowEvent,
+	ElementState,
+	Event,
+	KeyboardInput,
+	MouseButton,
+	ModifiersState,
+	WindowEvent,
 };
 use winit::event_loop::{ControlFlow, EventLoop, EventLoopProxy};
 
+use crate::keycode::key2byte;
 use material::face::TextureData;
 use material::texture_indexer::TextureIndexerRef;
 use protocol::pr_model::PrModel;
 use protocol::view::View;
 use vkrender::camera::Camera;
+use vkrender::render_mode::RenderMode;
 use vkrender::vertex::VertexWf;
 use vkrender::vk::vkrender::VkRender;
 use xpbd::controller_message::ControllerMessage;
@@ -24,8 +30,12 @@ pub struct Viewer {
 	pworld: Option<PWorld>,
 	event_loop: Option<EventLoop<UserEvent>>,
 	vkr: VkRender,
+	render_mode: RenderMode,
+	update_flag: bool,
 	particle_id: Option<usize>,
 	last_model: Option<PrModel>,
+	input_buffer: Vec<u8>,
+	controller: Option<Sender<ControllerMessage>>,
 }
 
 impl Viewer {
@@ -73,8 +83,12 @@ impl Viewer {
 			pworld: Some(pworld),
 			event_loop: Some(event_loop),
 			vkr,
+			render_mode: RenderMode::default(),
+			update_flag: true,
 			particle_id: None,
 			last_model: None,
+			input_buffer: Vec::new(),
+			controller: None,
 		}
 	}
 
@@ -104,8 +118,17 @@ impl Viewer {
 		};
 	}
 
+	fn send(&mut self, msg: ControllerMessage) {
+		self.controller
+			.as_mut()
+			.unwrap()
+			.send(msg)
+			.unwrap()
+	}
+
 	pub fn run(mut self) {
 		let (tx2, rx2) = channel();
+		self.controller = Some(tx2);
 		let mut pworld = self.pworld.take().unwrap();
 		let event_loop = self.event_loop.take().unwrap();
 		let elp: EventLoopProxy<UserEvent> = event_loop.create_proxy();
@@ -118,7 +141,6 @@ impl Viewer {
 				elp.send_event(user_event).unwrap();
 			}
 		});
-		let mut update_flag = true;
 		let mut load_smoother = 0.0;
 		let mut button_state = [false; 4];
 		let mut last_cursor = V2::new(0.0f32, 0.0f32);
@@ -131,7 +153,7 @@ impl Viewer {
 				WindowEvent::Resized(new_size) => {
 					self.view.resize([new_size.width, new_size.height]);
 					self.vkr.flush_swapchain();
-					update_flag = true;
+					self.update_flag = true;
 				}
 				WindowEvent::ModifiersChanged(modstate2) => {
 					modstate = modstate2;
@@ -145,16 +167,15 @@ impl Viewer {
 							self.view.zoom(k);
 						} else {
 							self.view.move_view(c - last_cursor);
-							update_flag = true;
+							self.update_flag = true;
 						}
 					} else if button_state[0] {
 						if let Some(id) = self.particle_id {
 							let c = self.view.s2w(c);
-							tx2.send(ControllerMessage::ControlParticle(
+							self.send(ControllerMessage::ControlParticle(
 								id,
 								c.into(),
-							))
-							.unwrap();
+							));
 						}
 					}
 					last_cursor = c;
@@ -176,8 +197,7 @@ impl Viewer {
 						if pressed {
 							self.select_particle(last_cursor);
 						} else if let Some(id) = self.particle_id.take() {
-							tx2.send(ControllerMessage::UncontrolParticle(id))
-								.unwrap();
+							self.send(ControllerMessage::UncontrolParticle(id));
 						}
 					}
 				}
@@ -190,30 +210,27 @@ impl Viewer {
 						},
 					..
 				} => {
-					match keycode {
-						Vkc::H => self.view.move_view_key(0),
-						Vkc::K => self.view.move_view_key(1),
-						Vkc::L => self.view.move_view_key(2),
-						Vkc::J => self.view.move_view_key(3),
-						Vkc::I => self.view.scale_view(true),
-						Vkc::O => self.view.scale_view(false),
-						Vkc::R => self.vkr.toggle_render_mode(),
-						Vkc::Space => {
-							tx2.send(ControllerMessage::TogglePause).unwrap()
-						}
-						Vkc::S => {
-							tx2.send(ControllerMessage::FrameForward).unwrap()
-						}
-						_ => {}
+					if let Some(byte) = key2byte(keycode) {
+						self.input_buffer.push(byte);
+						self.parse_input_buffer();
+						let input_text = if self.input_buffer.is_empty() {
+							Vec::new()
+						} else {
+							let mut input_text = format!("key: ").bytes()
+								.collect::<Vec<u8>>();
+							input_text.extend(self.input_buffer.clone());
+							input_text
+						};
+						self.vkr.set_text("input", input_text, false);
+						self.update_flag = true;
 					}
-					update_flag = true;
 				}
 				_ => {}
 			},
 			Event::RedrawEventsCleared => {
-				if update_flag {
+				if self.update_flag {
 					if let Some(pr_model) = &self.last_model {
-						update_flag = false;
+						self.update_flag = false;
 						self.vkr
 							.render(pr_model, Camera::from_view(&self.view));
 					}
@@ -238,7 +255,7 @@ impl Viewer {
 						format!("csize: {} {} {}", c0, c1, c2).bytes().collect();
 					self.vkr.set_text("con", con_text, false);
 					self.last_model = Some(pr_model);
-					update_flag = true;
+					self.update_flag = true;
 				}
 			},
 			Event::MainEventsCleared => {
@@ -246,5 +263,42 @@ impl Viewer {
 			}
 			_ => {}
 		});
+	}
+
+	fn parse_input_buffer(&mut self) {
+		if self.input_buffer.is_empty() { return }
+		match self.input_buffer[0] {
+			b'h' => self.view.move_view_key(0),
+			b'k' => self.view.move_view_key(1),
+			b'l' => self.view.move_view_key(2),
+			b'j' => self.view.move_view_key(3),
+			b'i' => self.view.scale_view(true),
+			b'o' => self.view.scale_view(false),
+			b'r' => {
+				let flag = match self.input_buffer.get(1) {
+					Some(b'c') => {
+						self.render_mode.constraint = !self.render_mode.constraint;
+						true
+					},
+					Some(b'b') => {
+						self.render_mode.world_box = !self.render_mode.world_box;
+						true
+					},
+					Some(_) => false,
+					None => return,
+				};
+				if flag {
+					self.vkr.set_render_mode(self.render_mode);
+				}
+			}
+			b' ' => {
+				self.send(ControllerMessage::TogglePause)
+			}
+			b's' => {
+				self.send(ControllerMessage::FrameForward)
+			}
+			_ => {}
+		}
+		self.input_buffer = Vec::new();
 	}
 }
