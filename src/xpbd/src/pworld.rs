@@ -1,18 +1,16 @@
-use std::collections::HashMap;
 use std::sync::mpsc::{Receiver, Sender};
 
 use crate::constraint::constraint_template::ConstraintTemplate;
 use crate::constraint::distance::DistanceConstraint;
 use crate::constraint::leash::LeashConstraint;
 use crate::constraint::volume::VolumeConstraint;
-use crate::constraint::Constraint;
+use crate::constraint_group::ConstraintGroup;
 use crate::controller_message::ControllerMessage;
 use crate::particle::Particle;
 use crate::particle_group::ParticleGroup;
 use crate::physical_model::PhysicalModel;
 use crate::posbox::Posbox;
 use crate::V2;
-use protocol::pr_model::PrConstraint;
 use protocol::pr_model::PrModel;
 use protocol::user_event::UpdateInfo;
 use protocol::user_event::UserEvent;
@@ -30,16 +28,13 @@ pub struct PWorld {
 	forward_frames: i32,
 
 	pg: ParticleGroup,
-	constraints: Vec<Box<dyn Constraint>>,
-	tmp_constraints: Vec<Box<dyn Constraint>>,
-	marionette_constraints: HashMap<usize, Box<dyn Constraint>>,
+	cg: ConstraintGroup,
 
 	print_perf: bool,
 }
 
 impl Default for PWorld {
 	fn default() -> Self {
-		let pg = ParticleGroup::default();
 		Self {
 			dt: 0.005,
 			ppr: 5,
@@ -47,10 +42,8 @@ impl Default for PWorld {
 			iteration: 6,
 			forward_frames: -1,
 
-			pg,
-			constraints: Vec::new(),
-			tmp_constraints: Vec::new(),
-			marionette_constraints: HashMap::new(),
+			pg: Default::default(),
+			cg: Default::default(),
 
 			print_perf: false,
 		}
@@ -118,41 +111,17 @@ impl PWorld {
 						.build()
 				}
 			};
-			self.constraints.push(con);
+			self.cg.add_constraint(con);
 		}
 	}
 
 	pub fn pr_model(&self) -> PrModel {
 		let ps = self.pg.pr_particles();
-		let cs: Vec<PrConstraint> = self
-			.constraints
-			.iter()
-			.chain(self.tmp_constraints.iter())
-			.map(|x| x.render())
-			.collect();
+		let cs = self.cg.pr_constraints();
 		PrModel {
 			particles: ps,
 			constraints: cs,
 		}
-	}
-
-	#[cfg(not(debug_assertions))]
-	fn solve_constraints(&mut self, dt: f32) {
-		use rayon::prelude::*;
-		self.constraints
-			.par_iter_mut()
-			.chain(self.tmp_constraints.par_iter_mut())
-			.chain(self.marionette_constraints.par_iter_mut().map(|(_k, v)| v))
-			.for_each(|constraint| constraint.step(dt));
-	}
-
-	#[cfg(debug_assertions)]
-	fn solve_constraints(&mut self, dt: f32) {
-		self.constraints
-			.iter_mut()
-			.chain(self.tmp_constraints.iter_mut())
-			.chain(self.marionette_constraints.values_mut())
-			.for_each(|constraint| constraint.step(dt));
 	}
 
 	fn update_frame(&mut self, dt: f32, iteration: usize) {
@@ -162,13 +131,11 @@ impl PWorld {
 		}
 		self.pg.update(dt);
 		timer.lap();
-		self.tmp_constraints = self.pg.collision_constraints();
+		self.cg.set_tmp_constraints(self.pg.collision_constraints());
 		timer.lap();
-		for constraint in self.constraints.iter_mut() {
-			constraint.pre_iteration();
-		}
+		self.cg.pre_iteration();
 		for _ in 0..iteration {
-			self.solve_constraints(dt);
+			self.cg.solve_constraints(dt);
 		}
 		timer.lap();
 		if self.print_perf {
@@ -204,7 +171,7 @@ impl PWorld {
 					model,
 					UpdateInfo {
 						load: dt / rtime,
-						coll_len: self.tmp_constraints.len(),
+						coll_len: self.cg.tmp_len(),
 					},
 				);
 				tx.send(event).unwrap();
@@ -226,13 +193,9 @@ impl PWorld {
 					}
 					ControllerMessage::ControlParticle(id, pos) => {
 						if let Some(pref) = self.pg.get_pref(id) {
-							self.marionette_constraints.insert(
-								id,
-								Box::new(LeashConstraint::new_with_pos(
-									pref,
-									pos.into(),
-								)),
-							);
+							let con =
+								LeashConstraint::new_with_pos(pref, pos.into());
+							self.cg.control_particle(id, con);
 						} else {
 							eprintln!(
 								"ERROR: control particle id {} is bad",
@@ -241,7 +204,7 @@ impl PWorld {
 						}
 					}
 					ControllerMessage::UncontrolParticle(id) => {
-						self.marionette_constraints.remove(&id);
+						self.cg.uncontrol_particle(id);
 					}
 				}
 			}

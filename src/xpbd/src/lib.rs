@@ -1,4 +1,5 @@
 pub mod constraint;
+mod constraint_group;
 pub mod controller_message;
 pub mod particle;
 mod particle_group;
