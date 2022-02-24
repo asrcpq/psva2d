@@ -227,9 +227,16 @@ impl Viewer {
 					let fps_text =
 						format!("Load: {:.2}%", load * 100.).bytes().collect();
 					self.vkr.set_text("load", fps_text, load > 1.0);
-					let coll_text =
-						format!("Coll: {}", info.coll_len).bytes().collect();
-					self.vkr.set_text("coll", coll_text, false);
+					let p = info.particle_len;
+					let par_text =
+						format!("psize: {}", p).bytes().collect();
+					self.vkr.set_text("par", par_text, false);
+					let c0 = info.constraint_len[0];
+					let c1 = info.constraint_len[1];
+					let c2 = info.constraint_len[2];
+					let con_text =
+						format!("csize: {} {} {}", c0, c1, c2).bytes().collect();
+					self.vkr.set_text("con", con_text, false);
 					self.last_model = Some(pr_model);
 					update_flag = true;
 				}

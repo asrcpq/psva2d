@@ -8,5 +8,6 @@ pub enum UserEvent {
 #[derive(Debug)]
 pub struct UpdateInfo {
 	pub load: f32,
-	pub coll_len: usize,
+	pub particle_len: usize,
+	pub constraint_len: Vec<usize>,
 }

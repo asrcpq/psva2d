@@ -19,6 +19,14 @@ impl ConstraintGroup {
 		self.id_alloc - 1
 	}
 
+	pub fn len(&self) -> Vec<usize> {
+		vec![
+			self.constraints.len(),
+			self.tmp_constraints.len(),
+			self.marionette_constraints.len(),
+		]
+	}
+
 	#[cfg(not(debug_assertions))]
 	pub fn solve_constraints(&mut self, dt: f32) {
 		use rayon::prelude::*;
@@ -50,10 +58,6 @@ impl ConstraintGroup {
 		tmp_constraints: Vec<CRef>,
 	) {
 		self.tmp_constraints = tmp_constraints;
-	}
-
-	pub fn tmp_len(&mut self) -> usize {
-		self.tmp_constraints.len()
 	}
 
 	pub fn control_particle(&mut self, id: usize, con: LeashConstraint) {
