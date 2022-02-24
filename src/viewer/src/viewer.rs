@@ -35,9 +35,9 @@ impl Viewer {
 		textures: Vec<TextureData>,
 	) -> Self {
 		let window_size = [800u32, 600];
-		let xmin = -5.0;
-		let xmax = 5.0;
-		let ymin = -10.0;
+		let xmin = -15.0;
+		let xmax = 15.0;
+		let ymin = -30.0;
 		let ymax = 0.;
 		let posbox = Posbox {
 			xmin,

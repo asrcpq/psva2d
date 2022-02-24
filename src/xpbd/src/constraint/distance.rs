@@ -5,7 +5,6 @@ use protocol::pr_model::PrConstraint;
 
 #[derive(Clone)]
 pub struct DistanceConstraintTemplate {
-	pub id: isize,
 	pub ps: Vec<usize>,
 	pub l0: f32,
 	pub compliance: f32,
@@ -22,7 +21,6 @@ type DCTy = DistanceConstraintType;
 
 #[derive(Clone)]
 pub struct DistanceConstraint {
-	id: isize,
 	ps: ParticleList,
 	ps_sort: ParticleList,
 	l0: f32,
@@ -41,17 +39,11 @@ impl DistanceConstraint {
 		Self::new_with_l0(p1, p2, l0)
 	}
 
-	pub fn with_id(mut self, id: isize) -> Self {
-		self.id = id;
-		self
-	}
-
 	pub fn new_with_l0(p1: PRef, p2: PRef, l0: f32) -> Self {
 		let ps = vec![p1, p2];
 		let ps_sort = ParticleList::new(ps.clone(), true);
 		let ps = ParticleList::new(ps, false);
 		Self {
-			id: -1,
 			ps,
 			ps_sort,
 			l0,
@@ -95,9 +87,9 @@ impl DistanceConstraint {
 }
 
 impl Constraint for DistanceConstraint {
-	fn render(&self) -> PrConstraint {
+	fn render(&self, id: i32) -> PrConstraint {
 		PrConstraint {
-			id: self.id,
+			id,
 			particles: self.ps.ids(),
 		}
 	}

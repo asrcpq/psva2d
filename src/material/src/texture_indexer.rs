@@ -23,8 +23,7 @@ impl Default for FaceInfo {
 
 #[derive(Default)]
 pub struct TextureIndexer {
-	id_alloc: isize, // constraint id
-	texture_map: HashMap<isize, FaceInfo>,
+	texture_map: HashMap<i32, FaceInfo>,
 }
 
 pub type TextureIndexerRef = Rc<RefCell<TextureIndexer>>;
@@ -41,11 +40,16 @@ impl TextureIndexer {
 		}
 		for constraint in pr_model.constraints.iter() {
 			if constraint.particles.len() == 3 {
-				let texind = self
+				let texind = if let Some(ind) = self
 					.texture_map
 					.get(&constraint.id)
 					.cloned()
-					.unwrap_or_default();
+				{
+					ind
+				} else {
+					eprintln!("Indexer constraint {} not found", constraint.id);
+					FaceInfo::default()
+				};
 				let face = Face {
 					vid: constraint.particles.clone().try_into().unwrap(),
 					uvid: texind.uvid,
@@ -60,9 +64,10 @@ impl TextureIndexer {
 		result
 	}
 
-	pub fn alloc_id(&mut self, info: FaceInfo) -> isize {
-		self.texture_map.insert(self.id_alloc, info);
-		self.id_alloc += 1;
-		self.id_alloc - 1
+	pub fn add_faces(&mut self, cids: Vec<i32>, faces: HashMap<usize, FaceInfo>) {
+		for (idx, face_info) in faces.into_iter() {
+			let ret = self.texture_map.insert(cids[idx], face_info);
+			assert!(ret.is_none());
+		}
 	}
 }

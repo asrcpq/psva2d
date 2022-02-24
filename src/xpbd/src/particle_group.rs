@@ -91,7 +91,6 @@ impl ParticleGroup {
 					p2.clone(),
 					self.csize,
 				)
-				.with_id(-2)
 				.repulsive_only()
 				.build();
 				result.push(collcon);

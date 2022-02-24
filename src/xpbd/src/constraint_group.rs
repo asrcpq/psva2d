@@ -1,19 +1,22 @@
 use std::collections::HashMap;
 
 use crate::constraint::leash::LeashConstraint;
-use crate::constraint::Constraint;
+use crate::constraint::CRef;
 use protocol::pr_model::PrConstraint;
 
 #[derive(Default)]
 pub struct ConstraintGroup {
-	constraints: Vec<Box<dyn Constraint>>,
-	tmp_constraints: Vec<Box<dyn Constraint>>,
-	marionette_constraints: HashMap<usize, Box<dyn Constraint>>,
+	id_alloc: i32,
+	constraints: HashMap<i32, CRef>,
+	tmp_constraints: Vec<CRef>,
+	marionette_constraints: HashMap<usize, CRef>,
 }
 
 impl ConstraintGroup {
-	pub fn add_constraint(&mut self, constraint: Box<dyn Constraint>) {
-		self.constraints.push(constraint);
+	pub fn add_constraint(&mut self, constraint: CRef) -> i32 {
+		self.constraints.insert(self.id_alloc, constraint);
+		self.id_alloc += 1;
+		self.id_alloc - 1
 	}
 
 	#[cfg(not(debug_assertions))]
@@ -21,6 +24,7 @@ impl ConstraintGroup {
 		use rayon::prelude::*;
 		self.constraints
 			.par_iter_mut()
+			.map(|(_k, v)| v)
 			.chain(self.tmp_constraints.par_iter_mut())
 			.chain(self.marionette_constraints.par_iter_mut().map(|(_k, v)| v))
 			.for_each(|constraint| constraint.step(dt));
@@ -36,14 +40,14 @@ impl ConstraintGroup {
 	}
 
 	pub fn pre_iteration(&mut self) {
-		for constraint in self.constraints.iter_mut() {
+		for constraint in self.constraints.values_mut() {
 			constraint.pre_iteration();
 		}
 	}
 
 	pub fn set_tmp_constraints(
 		&mut self,
-		tmp_constraints: Vec<Box<dyn Constraint>>,
+		tmp_constraints: Vec<CRef>,
 	) {
 		self.tmp_constraints = tmp_constraints;
 	}
@@ -61,11 +65,11 @@ impl ConstraintGroup {
 	}
 
 	pub fn pr_constraints(&self) -> Vec<PrConstraint> {
+		// NOTE: since only normal constraint has id
+		// more consideration is needed for rendering special constraints
 		self.constraints
 			.iter()
-			.chain(self.tmp_constraints.iter())
-			.chain(self.marionette_constraints.values())
-			.map(|x| x.render())
+			.map(|(v, k)| k.render(*v))
 			.collect()
 	}
 }
