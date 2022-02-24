@@ -28,6 +28,7 @@ pub struct DistanceConstraint {
 	compliance: f32,
 	plas_thresh: f32,
 	plas_cutoff: f32,
+	break_range: [f32; 2],
 	ty: DCTy,
 }
 
@@ -51,6 +52,7 @@ impl DistanceConstraint {
 			compliance: 1e-7,
 			plas_thresh: 0.0,
 			plas_cutoff: 1.0,
+			break_range: [0.0, f32::INFINITY],
 			ty: DCTy::Normal,
 		}
 	}
@@ -68,6 +70,12 @@ impl DistanceConstraint {
 	pub fn with_plasticity(mut self, thresh: f32, cutoff: f32) -> Self {
 		self.plas_thresh = thresh;
 		self.plas_cutoff = cutoff * self.l0;
+		self
+	}
+
+	pub fn with_break_range(mut self, range: [f32; 2]) -> Self {
+		self.break_range[0] = range[0] * self.l0;
+		self.break_range[1] = range[1] * self.l0;
 		self
 	}
 
@@ -94,20 +102,24 @@ impl Constraint for DistanceConstraint {
 		}
 	}
 
-	fn pre_iteration(&mut self) {
+	fn pre_iteration(&mut self) -> bool {
 		self.lambda = 0f32;
-		if self.plas_thresh == 0.0 {
-			return;
-		}
 		let p1 = self.ps[0].try_lock().unwrap();
 		let p2 = self.ps[1].try_lock().unwrap();
 
 		let dp = p1.get_pos() - p2.get_pos();
 		let l = dp.magnitude();
+		if self.break_range[0] > l || self.break_range[1] < l {
+			return false
+		}
+		if self.plas_thresh == 0.0 {
+			return true;
+		}
 		let dl = l - self.l0;
 		if dl.abs() > self.plas_cutoff {
 			self.l0 += dl * self.plas_thresh;
 		}
+		true
 	}
 
 	fn step(&mut self, dt: f32) {

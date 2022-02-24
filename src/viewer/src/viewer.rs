@@ -1,13 +1,9 @@
 use protocol::user_event::UserEvent;
 use protocol::V2;
 
-use std::sync::mpsc::{Sender, channel};
+use std::sync::mpsc::{channel, Sender};
 use winit::event::{
-	ElementState,
-	Event,
-	KeyboardInput,
-	MouseButton,
-	ModifiersState,
+	ElementState, Event, KeyboardInput, ModifiersState, MouseButton,
 	WindowEvent,
 };
 use winit::event_loop::{ControlFlow, EventLoop, EventLoopProxy};
@@ -119,11 +115,7 @@ impl Viewer {
 	}
 
 	fn send(&mut self, msg: ControllerMessage) {
-		self.controller
-			.as_mut()
-			.unwrap()
-			.send(msg)
-			.unwrap()
+		self.controller.as_mut().unwrap().send(msg).unwrap()
 	}
 
 	pub fn run(mut self) {
@@ -167,8 +159,8 @@ impl Viewer {
 							self.view.zoom(k);
 						} else {
 							self.view.move_view(c - last_cursor);
-							self.update_flag = true;
 						}
+						self.update_flag = true;
 					} else if button_state[0] {
 						if let Some(id) = self.particle_id {
 							let c = self.view.s2w(c);
@@ -216,8 +208,8 @@ impl Viewer {
 						let input_text = if self.input_buffer.is_empty() {
 							Vec::new()
 						} else {
-							let mut input_text = format!("key: ").bytes()
-								.collect::<Vec<u8>>();
+							let mut input_text =
+								"key: ".bytes().collect::<Vec<u8>>();
 							input_text.extend(self.input_buffer.clone());
 							input_text
 						};
@@ -245,14 +237,14 @@ impl Viewer {
 						format!("Load: {:.2}%", load * 100.).bytes().collect();
 					self.vkr.set_text("load", fps_text, load > 1.0);
 					let p = info.particle_len;
-					let par_text =
-						format!("psize: {}", p).bytes().collect();
+					let par_text = format!("psize: {}", p).bytes().collect();
 					self.vkr.set_text("par", par_text, false);
 					let c0 = info.constraint_len[0];
 					let c1 = info.constraint_len[1];
 					let c2 = info.constraint_len[2];
-					let con_text =
-						format!("csize: {} {} {}", c0, c1, c2).bytes().collect();
+					let con_text = format!("csize: {} {} {}", c0, c1, c2)
+						.bytes()
+						.collect();
 					self.vkr.set_text("con", con_text, false);
 					self.last_model = Some(pr_model);
 					self.update_flag = true;
@@ -266,7 +258,9 @@ impl Viewer {
 	}
 
 	fn parse_input_buffer(&mut self) {
-		if self.input_buffer.is_empty() { return }
+		if self.input_buffer.is_empty() {
+			return;
+		}
 		match self.input_buffer[0] {
 			b'h' => self.view.move_view_key(0),
 			b'k' => self.view.move_view_key(1),
@@ -277,13 +271,15 @@ impl Viewer {
 			b'r' => {
 				let flag = match self.input_buffer.get(1) {
 					Some(b'c') => {
-						self.render_mode.constraint = !self.render_mode.constraint;
+						self.render_mode.constraint =
+							!self.render_mode.constraint;
 						true
-					},
+					}
 					Some(b'b') => {
-						self.render_mode.world_box = !self.render_mode.world_box;
+						self.render_mode.world_box =
+							!self.render_mode.world_box;
 						true
-					},
+					}
 					Some(_) => false,
 					None => return,
 				};
@@ -291,12 +287,8 @@ impl Viewer {
 					self.vkr.set_render_mode(self.render_mode);
 				}
 			}
-			b' ' => {
-				self.send(ControllerMessage::TogglePause)
-			}
-			b's' => {
-				self.send(ControllerMessage::FrameForward)
-			}
+			b' ' => self.send(ControllerMessage::TogglePause),
+			b's' => self.send(ControllerMessage::FrameForward),
 			_ => {}
 		}
 		self.input_buffer = Vec::new();

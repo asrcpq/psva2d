@@ -40,10 +40,8 @@ impl TextureIndexer {
 		}
 		for constraint in pr_model.constraints.iter() {
 			if constraint.particles.len() == 3 {
-				let texind = if let Some(ind) = self
-					.texture_map
-					.get(&constraint.id)
-					.cloned()
+				let texind = if let Some(ind) =
+					self.texture_map.get(&constraint.id).cloned()
 				{
 					ind
 				} else {
@@ -64,7 +62,11 @@ impl TextureIndexer {
 		result
 	}
 
-	pub fn add_faces(&mut self, cids: Vec<i32>, faces: HashMap<usize, FaceInfo>) {
+	pub fn add_faces(
+		&mut self,
+		cids: Vec<i32>,
+		faces: HashMap<usize, FaceInfo>,
+	) {
 		for (idx, face_info) in faces.into_iter() {
 			let ret = self.texture_map.insert(cids[idx], face_info);
 			assert!(ret.is_none());

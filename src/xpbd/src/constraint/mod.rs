@@ -12,7 +12,7 @@ use protocol::pr_model::PrConstraint;
 pub type CRef = Box<dyn Constraint>;
 
 pub trait Constraint: dyn_clone::DynClone + Send {
-	fn pre_iteration(&mut self);
+	fn pre_iteration(&mut self) -> bool;
 	fn step(&mut self, dt: f32);
 	fn render(&self, id: i32) -> PrConstraint;
 }

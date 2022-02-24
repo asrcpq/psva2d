@@ -44,8 +44,9 @@ impl Constraint for LeashConstraint {
 		}
 	}
 
-	fn pre_iteration(&mut self) {
+	fn pre_iteration(&mut self) -> bool {
 		self.lambda = 0f32;
+		true
 	}
 
 	fn step(&mut self, dt: f32) {

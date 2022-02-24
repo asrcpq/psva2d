@@ -29,7 +29,7 @@ pub fn key2byte(key: Vkc) -> Option<u8> {
 		Vkc::Y => b'y',
 		Vkc::Z => b'z',
 		Vkc::Space => b' ',
-		_ => return None
+		_ => return None,
 	};
 	Some(byte)
 }

@@ -112,17 +112,19 @@ impl VksWorld {
 		pr_model: &PrModel,
 	) -> VertexBuffer<VertexWf> {
 		let mut vertices = Vec::new();
-		if self.render_mode.world_box { 
+		if self.render_mode.world_box {
 			vertices.extend(self.primitives.clone());
 		}
-		if self.render_mode.constraint { 
+		if self.render_mode.constraint {
 			for constraint in &pr_model.constraints {
 				let mut positions = vec![];
 				for &pid in constraint.particles.iter() {
 					if let Some(p) = pr_model.particles.get(&pid) {
 						positions.push(p.pos);
 					} else {
-						eprintln!("ERROR: vkrender found that pr model is broken");
+						eprintln!(
+							"ERROR: vkrender found that pr model is broken"
+						);
 					}
 				}
 				if positions.len() == 2 {

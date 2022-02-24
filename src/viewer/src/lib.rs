@@ -1,2 +1,2 @@
-pub mod viewer;
 mod keycode;
+pub mod viewer;

@@ -11,6 +11,7 @@ use vulkano::image::{
 	ImageDimensions, ImageUsage, ImmutableImage, MipmapsCount, SwapchainImage,
 };
 use vulkano::instance::Instance;
+use vulkano::pipeline::graphics::color_blend::ColorBlendState;
 use vulkano::pipeline::graphics::input_assembly::{
 	InputAssemblyState, PrimitiveTopology,
 };
@@ -167,6 +168,7 @@ pub fn get_pipeline_text(
 	let vs_text = shader::vs_text::load(device.clone()).unwrap();
 	let fs_text = shader::fs_text::load(device.clone()).unwrap();
 	let pipeline_text = GraphicsPipeline::start()
+		.color_blend_state(ColorBlendState::default().blend_alpha())
 		.vertex_input_state(BuffersDefinition::new().vertex::<VertexText>())
 		.vertex_shader(vs_text.entry_point("main").unwrap(), ())
 		.input_assembly_state(
