@@ -3,8 +3,8 @@ use protocol::V2;
 
 use std::sync::mpsc::channel;
 use winit::event::{
-	ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode as Vkc,
-	WindowEvent,
+	ElementState, Event, KeyboardInput, MouseButton, ModifiersState,
+	VirtualKeyCode as Vkc, WindowEvent,
 };
 use winit::event_loop::{ControlFlow, EventLoop, EventLoopProxy};
 
@@ -122,6 +122,7 @@ impl Viewer {
 		let mut load_smoother = 0.0;
 		let mut button_state = [false; 4];
 		let mut last_cursor = V2::new(0.0f32, 0.0f32);
+		let mut modstate = ModifiersState::default();
 		event_loop.run(move |event, _, control_flow| match event {
 			Event::WindowEvent { event: e, .. } => match e {
 				WindowEvent::CloseRequested => {
@@ -132,11 +133,20 @@ impl Viewer {
 					self.vkr.flush_swapchain();
 					update_flag = true;
 				}
+				WindowEvent::ModifiersChanged(modstate2) => {
+					modstate = modstate2;
+				}
 				WindowEvent::CursorMoved { position: p, .. } => {
 					let c = V2::new(p.x as f32, p.y as f32);
 					if button_state[1] {
-						self.view.move_view(c - last_cursor);
-						update_flag = true;
+						if modstate.ctrl() {
+							let mut k = (c - last_cursor).y;
+							k = (k / -100.).exp();
+							self.view.zoom(k);
+						} else {
+							self.view.move_view(c - last_cursor);
+							update_flag = true;
+						}
 					} else if button_state[0] {
 						if let Some(id) = self.particle_id {
 							let c = self.view.s2w(c);

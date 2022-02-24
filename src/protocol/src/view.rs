@@ -50,6 +50,10 @@ impl View {
 		self.screen_r[1] = new_size[1] as f32 / 2.;
 	}
 
+	pub fn zoom(&mut self, k: f32) {
+		self.zoom *= k;
+	}
+
 	pub fn scale_view(&mut self, zoom_in: bool) {
 		if zoom_in {
 			self.zoom *= 1.5;
