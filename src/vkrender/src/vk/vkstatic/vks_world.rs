@@ -7,6 +7,7 @@ use vulkano::pipeline::{Pipeline, PipelineBindPoint};
 
 use super::vks::Vks;
 use crate::camera::Camera;
+use crate::render_mode::RenderMode;
 use crate::shader;
 use crate::vertex::{Vertex, VertexWf};
 use crate::vk::vkwrapper::*;
@@ -18,12 +19,6 @@ use protocol::pr_model::PrModel;
 type VertexBuffer<V> = Arc<CpuAccessibleBuffer<[V]>>;
 type VertexBuffers<V> = Vec<(i32, VertexBuffer<V>)>;
 type CameraBuffer = Arc<CpuAccessibleBuffer<Camera>>;
-
-#[derive(PartialEq)]
-enum RenderMode {
-	Normal,
-	Wireframe,
-}
 
 pub struct VksWorld {
 	vks: Vks,
@@ -68,7 +63,7 @@ impl VksWorld {
 			render_pass,
 			texture_set,
 
-			render_mode: RenderMode::Normal,
+			render_mode: RenderMode::default(),
 			indexer,
 			tex_coords,
 
@@ -76,12 +71,8 @@ impl VksWorld {
 		}
 	}
 
-	pub fn toggle_render_mode(&mut self) {
-		if self.render_mode == RenderMode::Normal {
-			self.render_mode = RenderMode::Wireframe;
-		} else {
-			self.render_mode = RenderMode::Normal;
-		}
+	pub fn set_render_mode(&mut self, render_mode: RenderMode) {
+		self.render_mode = render_mode;
 	}
 
 	fn generate_vertex_buffers(
@@ -120,23 +111,26 @@ impl VksWorld {
 		&self,
 		pr_model: &PrModel,
 	) -> VertexBuffer<VertexWf> {
-		let mut vertices = self.primitives.clone();
-		let color1 = [0.0, 0.0, 1.0, 0.5];
-		let color2 = [0.0, 1.0, 0.0, 1.0];
-		for constraint in &pr_model.constraints {
-			let mut positions = vec![];
-			for &pid in constraint.particles.iter() {
-				if let Some(p) = pr_model.particles.get(&pid) {
-					positions.push(p.pos);
-				} else {
-					eprintln!("ERROR: vkrender found that pr model is broken");
+		let mut vertices = Vec::new();
+		if self.render_mode.world_box { 
+			vertices.extend(self.primitives.clone());
+		}
+		if self.render_mode.constraint { 
+			for constraint in &pr_model.constraints {
+				let mut positions = vec![];
+				for &pid in constraint.particles.iter() {
+					if let Some(p) = pr_model.particles.get(&pid) {
+						positions.push(p.pos);
+					} else {
+						eprintln!("ERROR: vkrender found that pr model is broken");
+					}
 				}
-			}
-			if positions.len() == 2 {
-				vertices.extend(vec![0, 1].into_iter().map(|i| VertexWf {
-					color: if constraint.id == -1 { color1 } else { color2 },
-					pos: positions[i],
-				}));
+				if positions.len() == 2 {
+					vertices.extend(vec![0, 1].into_iter().map(|i| VertexWf {
+						color: [0.0, 1.0, 0.7, 0.3],
+						pos: positions[i],
+					}));
+				}
 			}
 		}
 		CpuAccessibleBuffer::from_iter(
@@ -248,9 +242,7 @@ impl VksWorld {
 			.unwrap()
 			.set_viewport(0, [viewport]);
 		self.build_command_world(builder, pr_model, uniform_buffer.clone());
-		if self.render_mode == RenderMode::Wireframe {
-			self.build_command_wireframe(builder, pr_model, uniform_buffer);
-		}
+		self.build_command_wireframe(builder, pr_model, uniform_buffer);
 		builder.end_render_pass().unwrap();
 	}
 
