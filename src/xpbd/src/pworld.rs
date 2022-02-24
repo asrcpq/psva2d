@@ -117,6 +117,11 @@ impl PWorld {
 			let cid = self.cg.add_constraint(con);
 			cids.push(cid);
 		}
+		for v in physical_model.dependencies.iter() {
+			let key = cids[v[0]];
+			let value = v.iter().skip(1).map(|&x| cids[x]).collect();
+			self.cg.add_dependency(key, value);
+		}
 		cids
 	}
 

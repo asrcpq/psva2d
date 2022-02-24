@@ -41,3 +41,9 @@
 	* model edge rendering
 
 	* camera particle
+
+* Model
+
+	* model save
+
+	* model browser/editor(e.g. constraint deps)

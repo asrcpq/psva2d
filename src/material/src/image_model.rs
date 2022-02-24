@@ -34,10 +34,7 @@ pub struct ImageModelBuilder {
 }
 
 impl ImageModelBuilder {
-	pub fn new(
-		texture_id: i32,
-		image_path: &str,
-	) -> Self {
+	pub fn new(texture_id: i32, image_path: &str) -> Self {
 		eprintln!("INFO: Loading {}", image_path);
 		let image = image::open(image_path).unwrap().into_rgba8();
 		let len = [32, 32];
@@ -141,20 +138,27 @@ impl ImageModelBuilder {
 
 	pub fn build_physical_model(&mut self) -> PhysicalModel {
 		let mut constraints = vec![];
+		let mut dcmap = HashMap::new();
 		let mut pairs = vec![];
+		let mut deps = vec![];
 		pairs.extend(self.get_cells(vec![[0, 0], [-1, 0]]));
 		pairs.extend(self.get_cells(vec![[0, 0], [0, -1]]));
 		pairs.extend(self.get_cells(vec![[0, 0], [-1, -1]]));
 		pairs.extend(self.get_cells(vec![[0, -1], [-1, 0]]));
 		pairs.into_iter().for_each(|v| {
-			let pos0 = self.particles[v[0].pid].pos;
-			let pos1 = self.particles[v[1].pid].pos;
+			let id0 = v[0].pid;
+			let id1 = v[1].pid;
+			let pos0 = self.particles[id0].pos;
+			let pos1 = self.particles[id1].pos;
 			let dc = DistanceConstraintTemplate {
 				l0: (pos0 - pos1).magnitude(),
-				ps: vec![v[0].pid, v[1].pid],
+				ps: vec![id0, id1],
 				compliance: 1e-5,
 				ty: DCTy::Attractive,
 			};
+			let mut ids = [id0, id1];
+			ids.sort();
+			assert!(dcmap.insert(ids, constraints.len()).is_none());
 			constraints.push(Distance(dc));
 		});
 
@@ -162,7 +166,22 @@ impl ImageModelBuilder {
 		pairs.extend(self.get_cells(vec![[0, 0], [-1, 0], [-1, -1]]));
 		pairs.extend(self.get_cells(vec![[0, 0], [0, -1], [-1, -1]]));
 		pairs.into_iter().for_each(|v| {
-			let ps = vec![v[0].pid, v[1].pid, v[2].pid];
+			let id0 = v[0].pid;
+			let id1 = v[1].pid;
+			let id2 = v[2].pid;
+			let ps = vec![id0, id1, id2];
+
+			let l = constraints.len();
+			let mut ids = [id0, id1];
+			ids.sort();
+			deps.push([*dcmap.get(&ids).unwrap(), l]);
+			let mut ids = [id1, id2];
+			ids.sort();
+			deps.push([*dcmap.get(&ids).unwrap(), l]);
+			let mut ids = [id2, id0];
+			ids.sort();
+			deps.push([*dcmap.get(&ids).unwrap(), l]);
+
 			let face_info = FaceInfo {
 				texture_id: self.texture_id,
 				uvid: ps.clone().try_into().unwrap(),
@@ -177,6 +196,7 @@ impl ImageModelBuilder {
 		PhysicalModel {
 			particles: std::mem::take(&mut self.particles),
 			constraints,
+			dependencies: deps,
 		}
 	}
 

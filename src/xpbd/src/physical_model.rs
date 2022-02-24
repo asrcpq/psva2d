@@ -5,6 +5,9 @@ use crate::particle::ParticleTemplate;
 pub struct PhysicalModel {
 	pub particles: Vec<ParticleTemplate>,
 	pub constraints: Vec<ConstraintTemplate>,
+	// for each vec: first object depends on existence of all others
+	// usize for constraints idx
+	pub dependencies: Vec<[usize; 2]>,
 }
 
 impl std::fmt::Debug for PhysicalModel {
