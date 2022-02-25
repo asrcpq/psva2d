@@ -104,36 +104,36 @@ impl ParticleGroup {
 	}
 
 	pub fn collision_constraints(&mut self) -> Vec<Box<dyn Constraint>> {
-		let mut result = Vec::new();
-		// ...
-		// .xx
-		// xxx
-		for (cell, pvec) in &self.shp {
-			if pvec.is_empty() {
-				eprintln!("WARN: a cell has empty value, this is a bug");
-				continue;
-			}
-			for dcell in vec![
-				C2::new(-1, -1),
-				C2::new(-1, 0),
-				C2::new(-1, 1),
-				C2::new(0, -1),
-				C2::new(0, 0),
-				C2::new(0, 1),
-				C2::new(1, -1),
-				C2::new(1, 0),
-				C2::new(1, 1),
-			]
-			.into_iter()
-			{
-				let cell2 = cell + dcell;
-				if let Some(pvec2) = self.shp.get(&cell2) {
-					let collcons = self.collcon_of_2_pvecs(pvec, pvec2);
-					result.extend(collcons);
+		use rayon::prelude::*;
+		self.shp
+			.par_iter()
+			.flat_map(|(cell, pvec)| {
+				let mut result = Vec::new();
+				if pvec.is_empty() {
+					eprintln!("WARN: empty cell(bug)");
 				}
-			}
-		}
-		result
+				for dcell in vec![
+					C2::new(-1, -1),
+					C2::new(-1, 0),
+					C2::new(-1, 1),
+					C2::new(0, -1),
+					C2::new(0, 0),
+					C2::new(0, 1),
+					C2::new(1, -1),
+					C2::new(1, 0),
+					C2::new(1, 1),
+				]
+				.into_iter()
+				{
+					let cell2 = cell + dcell;
+					if let Some(pvec2) = self.shp.get(&cell2) {
+						let collcons = self.collcon_of_2_pvecs(pvec, pvec2);
+						result.extend(collcons);
+					}
+				}
+				result.into_par_iter()
+			})
+			.collect()
 	}
 
 	pub fn pr_particles(&self) -> HashMap<usize, PrParticle> {

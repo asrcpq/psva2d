@@ -24,8 +24,6 @@
 
 * Performance
 
-	* Parallel collision
-
 	* HPBD
 
 * Render
