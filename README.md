@@ -2,19 +2,15 @@
 
 * UI
 
-	* key input seq show
-
-	* input box
-
-	* toggle all info
+	(None)
 
 * Physics
 
-	* simple break
+	* advanced break
 
 	* face collision
 
-	* advanced mesh(remesh/mesh break)
+	* advanced mesh(control point removal/introduce)
 
 	* hinge
 
@@ -22,11 +18,9 @@
 
 * Features
 
-	* solid model/background model(coordinate grid is a type of it)
+	* solid model
 
-	* z
-
-	* user control
+	* z model
 
 * Performance
 

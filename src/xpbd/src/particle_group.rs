@@ -52,7 +52,7 @@ impl ParticleGroup {
 		let old_shp = std::mem::take(&mut self.shp);
 		for pref in old_shp.into_iter().map(|(_, p)| p).flatten() {
 			let pos = {
-				let mut locked = pref.try_lock().unwrap();
+				let mut locked = pref.try_write().unwrap();
 				locked.update(dt, self.speed_limit_k * self.csize);
 				if self.posbox.apply(&mut locked.pos) {
 					locked.ppos = locked.pos;
@@ -75,8 +75,8 @@ impl ParticleGroup {
 		for p1 in pv1.iter() {
 			for p2 in pv2.iter() {
 				{
-					let pp1 = p1.try_lock().unwrap();
-					if let Ok(ref mut pp2) = p2.try_lock() {
+					let pp1 = p1.read().unwrap();
+					if let Ok(ref mut pp2) = p2.read() {
 						if pp1.get_id() >= pp2.get_id() {
 							continue;
 						}
@@ -139,7 +139,7 @@ impl ParticleGroup {
 	pub fn pr_particles(&self) -> HashMap<usize, PrParticle> {
 		let mut result = HashMap::default();
 		for (&id, p) in self.data.iter() {
-			let prp = p.try_lock().unwrap().render();
+			let prp = p.try_read().unwrap().render();
 			assert!(result.insert(id, prp).is_none());
 		}
 		result
@@ -154,7 +154,7 @@ impl ParticleGroup {
 
 	pub fn add_pref(&mut self, p: PRef) -> usize {
 		let pos = {
-			let mut p = p.try_lock().unwrap();
+			let mut p = p.try_write().unwrap();
 			p.set_id(self.id_alloc);
 			p.get_pos()
 		};
