@@ -34,8 +34,8 @@ pub struct DistanceConstraint {
 
 impl DistanceConstraint {
 	pub fn new(p1: PRef, p2: PRef) -> Self {
-		let pos1 = p1.lock().unwrap().get_pos();
-		let pos2 = p2.lock().unwrap().get_pos();
+		let pos1 = p1.try_read().unwrap().get_pos();
+		let pos2 = p2.try_read().unwrap().get_pos();
 		let l0 = (pos1 - pos2).magnitude();
 		Self::new_with_l0(p1, p2, l0)
 	}
@@ -104,8 +104,8 @@ impl Constraint for DistanceConstraint {
 
 	fn pre_iteration(&mut self) -> bool {
 		self.lambda = 0f32;
-		let p1 = self.ps[0].try_lock().unwrap();
-		let p2 = self.ps[1].try_lock().unwrap();
+		let p1 = self.ps[0].try_write().unwrap();
+		let p2 = self.ps[1].try_write().unwrap();
 
 		let dp = p1.get_pos() - p2.get_pos();
 		let l = dp.magnitude();
@@ -123,8 +123,8 @@ impl Constraint for DistanceConstraint {
 	}
 
 	fn step(&mut self, dt: f32) {
-		let mut p1_mut = self.ps_sort[0].lock().unwrap();
-		let mut p2_mut = self.ps_sort[1].lock().unwrap();
+		let mut p1_mut = self.ps_sort[0].write().unwrap();
+		let mut p2_mut = self.ps_sort[1].write().unwrap();
 		let imass1 = p1_mut.get_imass();
 		let imass2 = p2_mut.get_imass();
 		let imass = imass1 + imass2;

@@ -34,9 +34,9 @@ impl VolumeConstraint {
 	pub fn new(ps: Vec<PRef>) -> Self {
 		let ps_sort = ParticleList::new(ps.clone(), true);
 		let ps = ParticleList::new(ps, false);
-		let p0 = ps_sort[0].try_lock().unwrap().get_pos();
-		let p1 = ps_sort[1].try_lock().unwrap().get_pos();
-		let p2 = ps_sort[2].try_lock().unwrap().get_pos();
+		let p0 = ps_sort[0].try_read().unwrap().get_pos();
+		let p1 = ps_sort[1].try_read().unwrap().get_pos();
+		let p2 = ps_sort[2].try_read().unwrap().get_pos();
 		let s0 = area_p(p0, p1, p2);
 		Self {
 			ps,
@@ -71,9 +71,9 @@ impl Constraint for VolumeConstraint {
 	}
 
 	fn step(&mut self, dt: f32) {
-		let mut p0_mut = self.ps_sort[0].lock().unwrap();
-		let mut p1_mut = self.ps_sort[1].lock().unwrap();
-		let mut p2_mut = self.ps_sort[2].lock().unwrap();
+		let mut p0_mut = self.ps_sort[0].write().unwrap();
+		let mut p1_mut = self.ps_sort[1].write().unwrap();
+		let mut p2_mut = self.ps_sort[2].write().unwrap();
 
 		let imass0 = p0_mut.get_imass();
 		let imass1 = p1_mut.get_imass();

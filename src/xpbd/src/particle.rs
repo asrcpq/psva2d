@@ -1,9 +1,9 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use crate::V2;
 use protocol::pr_model::PrParticle;
 
-pub type PRef = Arc<Mutex<Particle>>;
+pub type PRef = Arc<RwLock<Particle>>;
 
 #[derive(Clone)]
 pub struct ParticleTemplate {
@@ -29,7 +29,7 @@ impl Particle {
 			ppos: pos,
 			accel,
 		};
-		Arc::new(Mutex::new(result))
+		Arc::new(RwLock::new(result))
 	}
 
 	pub fn get_id(&self) -> usize {

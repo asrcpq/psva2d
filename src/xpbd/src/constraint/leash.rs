@@ -13,7 +13,7 @@ pub struct LeashConstraint {
 
 impl LeashConstraint {
 	pub fn new(p: PRef) -> Self {
-		let pos = p.try_lock().unwrap().get_pos();
+		let pos = p.try_read().unwrap().get_pos();
 		Self::new_with_pos(p, pos)
 	}
 
@@ -40,7 +40,7 @@ impl Constraint for LeashConstraint {
 	fn render(&self, id: i32) -> PrConstraint {
 		PrConstraint {
 			id,
-			particles: vec![self.p.try_lock().unwrap().get_id()],
+			particles: vec![self.p.try_read().unwrap().get_id()],
 		}
 	}
 
@@ -50,7 +50,7 @@ impl Constraint for LeashConstraint {
 	}
 
 	fn step(&mut self, dt: f32) {
-		let mut p = self.p.lock().unwrap();
+		let mut p = self.p.write().unwrap();
 		let imass = p.get_imass();
 		if imass == 0.0 {
 			return;
