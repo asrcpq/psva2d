@@ -13,7 +13,7 @@ impl ParticleList {
 				.map(|x| {
 					(
 						{
-							let id = x.try_read().unwrap().get_id();
+							let id = x.try_read().unwrap().id;
 							id
 						},
 						x,
@@ -32,7 +32,7 @@ impl ParticleList {
 	pub fn ids(&self) -> Vec<usize> {
 		self.particles
 			.iter()
-			.map(|x| x.try_read().unwrap().get_id())
+			.map(|x| x.try_read().unwrap().id)
 			.collect()
 	}
 }

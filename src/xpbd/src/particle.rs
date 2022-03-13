@@ -32,14 +32,6 @@ impl Particle {
 		Arc::new(RwLock::new(result))
 	}
 
-	pub fn get_id(&self) -> usize {
-		self.id
-	}
-
-	pub fn set_id(&mut self, id: usize) {
-		self.id = id;
-	}
-
 	pub fn get_pos(&self) -> V2 {
 		self.pos
 	}

@@ -10,7 +10,6 @@ use crate::{C2, V2};
 use protocol::pr_model::PrParticle;
 
 pub struct ParticleGroup {
-	// Note: compress function? but maybe not necessary
 	id_alloc: usize,
 	csize: f32, // = 2 x radius
 	shp: Map<C2, Vec<PRef>>,
@@ -50,7 +49,7 @@ impl ParticleGroup {
 
 	pub fn update(&mut self, dt: f32) {
 		let old_shp = std::mem::take(&mut self.shp);
-		for pref in old_shp.into_iter().map(|(_, p)| p).flatten() {
+		for pref in old_shp.into_iter().flat_map(|(_, p)| p) {
 			let pos = {
 				let mut locked = pref.try_write().unwrap();
 				locked.update(dt, self.speed_limit_k * self.csize);
@@ -77,7 +76,7 @@ impl ParticleGroup {
 				{
 					let pp1 = p1.read().unwrap();
 					if let Ok(ref mut pp2) = p2.read() {
-						if pp1.get_id() >= pp2.get_id() {
+						if pp1.id >= pp2.id {
 							continue;
 						}
 						let dl = (pp1.get_pos() - pp2.get_pos()).magnitude();
@@ -155,7 +154,7 @@ impl ParticleGroup {
 	pub fn add_pref(&mut self, p: PRef) -> usize {
 		let pos = {
 			let mut p = p.try_write().unwrap();
-			p.set_id(self.id_alloc);
+			p.id = self.id_alloc;
 			p.get_pos()
 		};
 		assert!(self.data.insert(self.id_alloc, p.clone()).is_none());

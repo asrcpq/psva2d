@@ -157,7 +157,7 @@ impl ImageModelBuilder {
 				ty: DCTy::Attractive,
 			};
 			let mut ids = [id0, id1];
-			ids.sort();
+			ids.sort_unstable();
 			assert!(dcmap.insert(ids, constraints.len()).is_none());
 			constraints.push(Distance(dc));
 		});
@@ -173,13 +173,13 @@ impl ImageModelBuilder {
 
 			let l = constraints.len();
 			let mut ids = [id0, id1];
-			ids.sort();
+			ids.sort_unstable();
 			deps.push([*dcmap.get(&ids).unwrap(), l]);
 			let mut ids = [id1, id2];
-			ids.sort();
+			ids.sort_unstable();
 			deps.push([*dcmap.get(&ids).unwrap(), l]);
 			let mut ids = [id2, id0];
-			ids.sort();
+			ids.sort_unstable();
 			deps.push([*dcmap.get(&ids).unwrap(), l]);
 
 			let face_info = FaceInfo {

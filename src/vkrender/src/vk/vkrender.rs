@@ -1,7 +1,9 @@
 use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage};
 use vulkano::image::ImageAccess;
 use vulkano::pipeline::graphics::viewport::Viewport;
-use vulkano::swapchain::{self, AcquireError, SwapchainCreationError};
+use vulkano::swapchain::{
+	self, AcquireError, SwapchainCreateInfo, SwapchainCreationError,
+};
 use vulkano::sync::{self, FlushError, GpuFuture};
 use winit::event_loop::EventLoopWindowTarget;
 
@@ -149,22 +151,23 @@ impl VkRender {
 			self.vks.surface.window().inner_size().into();
 		self.r_overlay
 			.set_text_scaler(self.vks.surface.window().scale_factor() as f32);
-		let (new_swapchain, new_images) = match self
-			.vks
-			.swapchain
-			.recreate()
-			.dimensions(dimensions)
-			.build()
-		{
-			Ok(r) => r,
-			Err(SwapchainCreationError::UnsupportedDimensions) => {
-				eprintln!("Error: unsupported dimensions");
-				return;
-			}
-			Err(e) => {
-				panic!("Failed to recreate swapchain: {:?}", e)
-			}
-		};
+		let swapchain = self.vks.swapchain.clone();
+		let (new_swapchain, new_images) =
+			match swapchain.recreate(SwapchainCreateInfo {
+				image_extent: dimensions,
+				..swapchain.create_info()
+			}) {
+				Ok(r) => r,
+				Err(SwapchainCreationError::ImageExtentNotSupported {
+					..
+				}) => {
+					eprintln!("Error: unsupported dimensions");
+					return;
+				}
+				Err(e) => {
+					panic!("Failed to recreate swapchain: {:?}", e)
+				}
+			};
 		self.vks.swapchain = new_swapchain;
 
 		let dimensions = new_images[0].dimensions().width_height();

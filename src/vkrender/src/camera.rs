@@ -1,7 +1,9 @@
+use bytemuck::{Pod, Zeroable};
+
 use protocol::view::View;
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Pod, Zeroable, Debug, Clone, Copy)]
 pub struct Camera {
 	pub c: [f32; 2],
 	pub r: [f32; 2],

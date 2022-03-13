@@ -1,5 +1,4 @@
-use vulkano::instance::Instance;
-use vulkano::Version;
+use vulkano::instance::{Instance, InstanceCreateInfo};
 use vulkano_win::VkSurfaceBuild;
 use winit::dpi::{LogicalSize, Size};
 use winit::event_loop::EventLoopWindowTarget;
@@ -26,9 +25,11 @@ impl Vks {
 		window_size: [u32; 2],
 	) -> Self {
 		let required_extensions = vulkano_win::required_extensions();
-		let instance =
-			Instance::new(None, Version::V1_1, &required_extensions, None)
-				.unwrap();
+		let instance = Instance::new(InstanceCreateInfo {
+			enabled_extensions: required_extensions,
+			..Default::default()
+		})
+		.unwrap();
 		let surface = WindowBuilder::new()
 			.with_inner_size(winit_size(window_size))
 			//.with_resizable(false)
@@ -41,7 +42,6 @@ impl Vks {
 		let (swapchain, images) = get_swapchain_and_images(
 			physical_device,
 			device.clone(),
-			queue.clone(),
 			surface.clone(),
 		);
 		Self {

@@ -139,11 +139,12 @@ impl PWorld {
 		if dt == 0f32 {
 			return;
 		}
+		self.cg.pre_iteration();
+		timer.lap();
 		self.pg.update(dt);
 		timer.lap();
 		self.cg.set_tmp_constraints(self.pg.collision_constraints());
 		timer.lap();
-		self.cg.pre_iteration();
 		for _ in 0..iteration {
 			self.cg.solve_constraints(dt);
 		}

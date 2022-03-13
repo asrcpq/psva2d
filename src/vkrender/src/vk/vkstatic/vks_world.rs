@@ -84,22 +84,24 @@ impl VksWorld {
 			if id < 0 || id >= self.tex_coords.len() as i32 {
 				continue;
 			}
+			let vertices = face_group
+				.faces
+				.iter()
+				.flat_map(|x| {
+					(0..3).map(|i| Vertex {
+						pos: *render_model.vs.get(&x.vid[i]).unwrap(),
+						tex_coord: self.tex_coords[id as usize][x.uvid[i]],
+					})
+				})
+				.collect::<Vec<_>>();
+			if vertices.is_empty() {
+				continue;
+			}
 			let vertex_buffer = CpuAccessibleBuffer::from_iter(
 				self.vks.device.clone(),
 				BufferUsage::all(),
 				false,
-				face_group
-					.faces
-					.iter()
-					.map(|x| {
-						(0..3).map(|i| Vertex {
-							pos: *render_model.vs.get(&x.vid[i]).unwrap(),
-							tex_coord: self.tex_coords[id as usize][x.uvid[i]],
-						})
-					})
-					.flatten()
-					.collect::<Vec<_>>()
-					.into_iter(),
+				vertices.into_iter(),
 			)
 			.unwrap();
 			vertex_buffers.push((id, vertex_buffer));
@@ -110,7 +112,7 @@ impl VksWorld {
 	fn generate_vertex_wf_buffer(
 		&self,
 		pr_model: &PrModel,
-	) -> VertexBuffer<VertexWf> {
+	) -> Option<VertexBuffer<VertexWf>> {
 		let mut vertices = Vec::new();
 		if self.render_mode.world_box {
 			vertices.extend(self.primitives.clone());
@@ -135,13 +137,17 @@ impl VksWorld {
 				}
 			}
 		}
-		CpuAccessibleBuffer::from_iter(
+		if vertices.is_empty() {
+			return None;
+		}
+		let result = CpuAccessibleBuffer::from_iter(
 			self.vks.device.clone(),
 			BufferUsage::all(),
 			false,
 			vertices.into_iter(),
 		)
-		.unwrap()
+		.unwrap();
+		Some(result)
 	}
 
 	pub fn build_command_wireframe(
@@ -150,18 +156,17 @@ impl VksWorld {
 		pr_model: &PrModel,
 		uniform_buffer: CameraBuffer,
 	) {
-		let layout = self
-			.pipeline_wf
-			.layout()
-			.descriptor_set_layouts()
-			.get(0)
-			.unwrap();
+		let layout = self.pipeline_wf.layout().set_layouts().get(0).unwrap();
 		let set = PersistentDescriptorSet::new(
 			layout.clone(),
 			[WriteDescriptorSet::buffer(0, uniform_buffer)],
 		)
 		.unwrap();
 		let vertex_buffer = self.generate_vertex_wf_buffer(pr_model);
+		let vertex_buffer = match vertex_buffer {
+			Some(vb) => vb,
+			None => return,
+		};
 		let buflen = vertex_buffer.len();
 		builder
 			.bind_pipeline_graphics(self.pipeline_wf.clone())
@@ -182,12 +187,7 @@ impl VksWorld {
 		pr_model: &PrModel,
 		uniform_buffer: CameraBuffer,
 	) {
-		let layout = self
-			.pipeline
-			.layout()
-			.descriptor_set_layouts()
-			.get(0)
-			.unwrap();
+		let layout = self.pipeline.layout().set_layouts().get(0).unwrap();
 		let set = PersistentDescriptorSet::new(
 			layout.clone(),
 			[WriteDescriptorSet::buffer(0, uniform_buffer)],

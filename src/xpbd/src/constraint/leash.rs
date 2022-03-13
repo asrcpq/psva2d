@@ -40,7 +40,7 @@ impl Constraint for LeashConstraint {
 	fn render(&self, id: i32) -> PrConstraint {
 		PrConstraint {
 			id,
-			particles: vec![self.p.try_read().unwrap().get_id()],
+			particles: vec![self.p.try_read().unwrap().id],
 		}
 	}
 
