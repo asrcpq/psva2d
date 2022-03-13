@@ -4,9 +4,12 @@ use vulkano::command_buffer::{
 };
 use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::device::physical::{PhysicalDevice, PhysicalDeviceType};
-use vulkano::device::{Device, DeviceExtensions, Features, Queue};
+use vulkano::device::{
+	Device, DeviceCreateInfo, DeviceExtensions, Features, Queue,
+	QueueCreateInfo,
+};
 use vulkano::format::Format;
-use vulkano::image::view::{ImageView, ImageViewType};
+use vulkano::image::view::{ImageView, ImageViewCreateInfo, ImageViewType};
 use vulkano::image::{
 	ImageDimensions, ImageUsage, ImmutableImage, MipmapsCount, SwapchainImage,
 };
@@ -18,9 +21,11 @@ use vulkano::pipeline::graphics::input_assembly::{
 use vulkano::pipeline::graphics::vertex_input::BuffersDefinition;
 use vulkano::pipeline::graphics::viewport::ViewportState;
 use vulkano::pipeline::{GraphicsPipeline, Pipeline};
-use vulkano::render_pass::{Framebuffer, RenderPass, Subpass};
-use vulkano::sampler::Sampler;
-use vulkano::swapchain::{Surface, Swapchain};
+use vulkano::render_pass::{
+	Framebuffer, FramebufferCreateInfo, RenderPass, Subpass,
+};
+use vulkano::sampler::{Sampler, SamplerCreateInfo};
+use vulkano::swapchain::{Surface, Swapchain, SwapchainCreateInfo};
 use vulkano::sync::GpuFuture;
 use winit::window::Window;
 
@@ -58,7 +63,7 @@ pub fn get_device_and_queue<W>(
 			p.queue_families()
 				.find(|&q| {
 					q.supports_graphics()
-						&& surface.is_supported(q).unwrap_or(false)
+						&& q.supports_surface(&surface).unwrap_or(false)
 				})
 				.map(|q| (p, q))
 		})
@@ -79,14 +84,17 @@ pub fn get_device_and_queue<W>(
 
 	let (device, mut queues) = Device::new(
 		physical_device,
-		&Features {
-			fill_mode_non_solid: true,
-			..Features::none()
+		DeviceCreateInfo {
+			enabled_extensions: physical_device
+				.required_extensions()
+				.union(&device_extensions),
+			enabled_features: Features {
+				fill_mode_non_solid: true,
+				..Features::none()
+			},
+			queue_create_infos: vec![QueueCreateInfo::family(queue_family)],
+			..Default::default()
 		},
-		&physical_device
-			.required_extensions()
-			.union(&device_extensions),
-		[(queue_family, 0.5)].iter().cloned(),
 	)
 	.unwrap();
 
@@ -98,23 +106,32 @@ pub fn get_device_and_queue<W>(
 pub fn get_swapchain_and_images(
 	physical_device: PhysicalDevice,
 	device: VkwDevice,
-	queue: VkwQueue,
 	surface: VkwSurface<Window>,
 ) -> (VkwSwapchain<Window>, VkwImages) {
-	let caps = surface.capabilities(physical_device).unwrap();
+	let caps = physical_device
+		.surface_capabilities(&surface, Default::default())
+		.unwrap();
 	let composite_alpha = caps.supported_composite_alpha.iter().next().unwrap();
-	let format = caps.supported_formats[0].0;
+	let format = physical_device
+		.surface_formats(&surface, Default::default())
+		.unwrap()[0]
+		.0;
+	let format = Some(format);
 	let dimensions: [u32; 2] = surface.window().inner_size().into();
 
-	Swapchain::start(device, surface)
-		.num_images(caps.min_image_count)
-		.format(format)
-		.dimensions(dimensions)
-		.usage(ImageUsage::color_attachment())
-		.sharing_mode(&queue)
-		.composite_alpha(composite_alpha)
-		.build()
-		.unwrap()
+	Swapchain::new(
+		device,
+		surface,
+		SwapchainCreateInfo {
+			min_image_count: caps.min_image_count,
+			image_format: format,
+			image_extent: dimensions,
+			image_usage: ImageUsage::color_attachment(),
+			composite_alpha,
+			..Default::default()
+		},
+	)
+	.unwrap()
 }
 
 pub fn get_render_pass<W>(
@@ -127,7 +144,7 @@ pub fn get_render_pass<W>(
 			color: {
 				load: Clear,
 				store: Store,
-				format: swapchain.format(),
+				format: swapchain.image_format(),
 				samples: 1,
 			}
 		},
@@ -149,7 +166,7 @@ pub fn get_render_pass_overlay<W>(
 			color: {
 				load: Load,
 				store: Store,
-				format: swapchain.format(),
+				format: swapchain.image_format(),
 				samples: 1,
 			}
 		},
@@ -241,15 +258,14 @@ pub fn get_text_texture(
 			queue,
 		)
 		.unwrap();
-		let image_view = ImageView::start(image)
-			.ty(ImageViewType::Dim2d)
-			.build()
-			.unwrap();
+		let image_view = ImageView::new_default(image).unwrap();
 		(image_view, future)
 	};
 
-	let sampler = Sampler::simple_repeat_linear(device).unwrap();
-	let layout = pipeline.layout().descriptor_set_layouts().get(0).unwrap();
+	let sampler =
+		Sampler::new(device, SamplerCreateInfo::simple_repeat_linear())
+			.unwrap();
+	let layout = pipeline.layout().set_layouts().get(0).unwrap();
 	let texture_set = PersistentDescriptorSet::new(
 		layout.clone(),
 		[WriteDescriptorSet::image_view_sampler(0, texture, sampler)],
@@ -286,23 +302,32 @@ pub fn get_textures(
 		};
 		#[allow(clippy::needless_collect)]
 		let arrays: Vec<u8> = arrays.into_iter().flat_map(|x| x.into_iter()).collect();
+		let format = Format::R8G8B8A8_SRGB;
+		// TODO: default texture, solve size=0 problem
 		let (image, future) = ImmutableImage::from_iter(
 			arrays.into_iter(),
 			dimensions,
 			MipmapsCount::One,
-			Format::R8G8B8A8_SRGB,
+			format,
 			queue,
 		)
 		.unwrap();
-		let image_view = ImageView::start(image)
-			.ty(ImageViewType::Dim2dArray)
-			.build()
-			.unwrap();
+		let image_view = ImageView::new(
+			image.clone(),
+			ImageViewCreateInfo {
+				view_type: ImageViewType::Dim2dArray,
+				..ImageViewCreateInfo::from_image(&image)
+			},
+		)
+		.unwrap();
 		(image_view, future)
 	};
 
-	let sampler = Sampler::simple_repeat_linear(device).unwrap();
-	let layout = pipeline.layout().descriptor_set_layouts().get(1).unwrap();
+	let sampler =
+		Sampler::new(device, SamplerCreateInfo::simple_repeat_linear())
+			.unwrap();
+
+	let layout = pipeline.layout().set_layouts().get(1).unwrap();
 	let texture_set = PersistentDescriptorSet::new(
 		layout.clone(),
 		[WriteDescriptorSet::image_view_sampler(0, texture, sampler)],
@@ -319,12 +344,15 @@ pub fn window_size_dependent_setup(
 	images
 		.iter()
 		.map(|image| {
-			let view = ImageView::new(image.clone()).unwrap();
-			Framebuffer::start(render_pass.clone())
-				.add(view)
-				.unwrap()
-				.build()
-				.unwrap()
+			let view = ImageView::new_default(image.clone()).unwrap();
+			Framebuffer::new(
+				render_pass.clone(),
+				FramebufferCreateInfo {
+					attachments: vec![view],
+					..Default::default()
+				},
+			)
+			.unwrap()
 		})
 		.collect::<Vec<_>>()
 }

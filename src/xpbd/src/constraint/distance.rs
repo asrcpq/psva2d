@@ -26,10 +26,13 @@ pub struct DistanceConstraint {
 	l0: f32,
 	lambda: f32,
 	compliance: f32,
+	ty: DCTy,
+
 	plas_thresh: f32,
 	plas_cutoff: f32,
+
+	break_self: bool,
 	break_range: [f32; 2],
-	ty: DCTy,
 }
 
 impl DistanceConstraint {
@@ -52,6 +55,7 @@ impl DistanceConstraint {
 			compliance: 1e-7,
 			plas_thresh: 0.0,
 			plas_cutoff: 1.0,
+			break_self: false,
 			break_range: [0.0, f32::INFINITY],
 			ty: DCTy::Normal,
 		}
@@ -110,7 +114,7 @@ impl Constraint for DistanceConstraint {
 		let dp = p1.get_pos() - p2.get_pos();
 		let l = dp.magnitude();
 		if self.break_range[0] > l || self.break_range[1] < l {
-			return false
+			return !self.break_self;
 		}
 		if self.plas_thresh == 0.0 {
 			return true;
