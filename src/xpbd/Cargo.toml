@@ -11,4 +11,4 @@ fnv = "1.0"
 rand = "^0.8"
 
 protocol = {path = "../protocol"}
-timer = {path = "../timer"}
+stpw = {git = "https://github.com/asrcpq/stpw.git"}
