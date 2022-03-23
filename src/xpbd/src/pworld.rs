@@ -14,7 +14,7 @@ use crate::V2;
 use protocol::pr_model::PrModel;
 use protocol::user_event::UpdateInfo;
 use protocol::user_event::UserEvent;
-use timer::Timer;
+use stpw::Timer;
 
 pub struct PWorld {
 	pub dt: f32,
@@ -150,7 +150,7 @@ impl PWorld {
 		}
 		timer.lap();
 		if self.print_perf {
-			eprintln!("{:?}", timer.laps);
+			eprintln!("{:?}", timer.get_laps());
 		}
 	}
 
