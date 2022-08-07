@@ -1,6 +1,5 @@
 use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer, TypedBufferAccess};
-use vulkano::command_buffer::SubpassContents;
-use vulkano::format::ClearValue;
+use vulkano::command_buffer::{RenderPassBeginInfo, SubpassContents};
 use vulkano::pipeline::graphics::viewport::Viewport;
 use vulkano::pipeline::{Pipeline, PipelineBindPoint};
 
@@ -73,9 +72,11 @@ impl VksOverlay {
 
 		builder
 			.begin_render_pass(
-				self.framebuffers[image_num].clone(),
+				RenderPassBeginInfo {
+					clear_values: vec![None],
+					..RenderPassBeginInfo::framebuffer(self.framebuffers[image_num].clone())
+				},
 				SubpassContents::Inline,
-				vec![ClearValue::None],
 			)
 			.unwrap()
 			.set_viewport(0, [viewport])

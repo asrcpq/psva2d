@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer, TypedBufferAccess};
-use vulkano::command_buffer::SubpassContents;
+use vulkano::command_buffer::{RenderPassBeginInfo, SubpassContents};
 use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::pipeline::graphics::viewport::Viewport;
 use vulkano::pipeline::{Pipeline, PipelineBindPoint};
@@ -234,12 +234,14 @@ impl VksWorld {
 		)
 		.unwrap();
 
-		let clear_values = vec![[0.0, 0.0, 0.0, 1.0].into()];
+		let clear_values = vec![Some([0.0, 0.0, 0.0, 1.0].into())];
 		builder
 			.begin_render_pass(
-				self.framebuffers[image_num].clone(),
+				RenderPassBeginInfo {
+					clear_values,
+					..RenderPassBeginInfo::framebuffer(self.framebuffers[image_num].clone())
+				},
 				SubpassContents::Inline,
-				clear_values,
 			)
 			.unwrap()
 			.set_viewport(0, [viewport]);

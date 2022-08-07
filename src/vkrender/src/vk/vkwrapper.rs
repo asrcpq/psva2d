@@ -85,9 +85,7 @@ pub fn get_device_and_queue<W>(
 	let (device, mut queues) = Device::new(
 		physical_device,
 		DeviceCreateInfo {
-			enabled_extensions: physical_device
-				.required_extensions()
-				.union(&device_extensions),
+			enabled_extensions: device_extensions,
 			enabled_features: Features {
 				fill_mode_non_solid: true,
 				..Features::none()
