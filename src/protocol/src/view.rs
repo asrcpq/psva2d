@@ -68,8 +68,8 @@ impl View {
 
 	pub fn get_r(&self) -> [f32; 2] {
 		[
-			self.zoom / self.screen_r[0] as f32,
-			self.zoom / self.screen_r[1] as f32,
+			self.zoom / self.screen_r[0],
+			self.zoom / self.screen_r[1],
 		]
 	}
 }
